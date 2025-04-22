@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,14 +7,16 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  ColorSchemeName
+  ColorSchemeName,
+  ScrollView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontAwesome } from '@expo/vector-icons';
+import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 
 import { WINE_COLORS } from './WineColors';
+import { analyzeWineImage, WineAnalysisResponse } from '../../services/imageService';
 
 // Interfaz para los resultados del análisis de IA
 export interface AIWineAnalysisResult {
@@ -33,23 +35,25 @@ interface AIWineAnalyzerProps {
   colorScheme?: ColorSchemeName;
 }
 
-export function AIWineAnalyzer({ 
-  onAnalysisComplete, 
+export function AIWineAnalyzer({
+  onAnalysisComplete,
   onCancel,
   colorScheme = 'light'
 }: AIWineAnalyzerProps) {
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
-  
+  const [error, setError] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<WineAnalysisResponse | null>(null);
+
   const themeColors = WINE_COLORS[colorScheme ?? 'light'];
   const progressWidth = useSharedValue(0);
-  
+
   useEffect(() => {
     // Animate the progress bar when progress changes
     progressWidth.value = withTiming(progress, { duration: 150 });
   }, [progress]);
-  
+
   const progressAnimatedStyle = useAnimatedStyle(() => {
     return {
       width: `${progressWidth.value}%`,
@@ -59,84 +63,129 @@ export function AIWineAnalyzer({
     };
   });
 
-  // Simulación de análisis de IA
-  const simulateAIAnalysis = () => {
+  // Analizar imagen con IA real
+  const analyzeImage = useCallback(async (imageUri: string) => {
     setIsAnalyzing(true);
+    setError(null);
+    setProgress(0);
     
-    // Simulamos el progreso
-    let currentProgress = 0;
-    const interval = setInterval(() => {
-      currentProgress += 5;
-      setProgress(currentProgress);
+    // Mostrar progreso artificial para mejorar UX
+    const updateProgress = () => {
+      setProgress(prev => {
+        // Simular hasta 95% para la espera de API
+        if (prev < 95) {
+          return prev + Math.min(5, (95 - prev) * 0.1);
+        }
+        return prev;
+      });
+    };
+    
+    const progressInterval = setInterval(updateProgress, 300);
+    
+    try {
+      const result = await analyzeWineImage(imageUri);
       
-      if (currentProgress >= 100) {
-        clearInterval(interval);
-        
-        // Resultado simulado del análisis
-        setTimeout(() => {
-          setIsAnalyzing(false);
-          if (image) {
-            onAnalysisComplete({
-              name: 'Malbec Gran Reserva',
-              winery: 'Bodega Catena Zapata',
-              year: '2018',
-              type: 'red',
-              country: 'Argentina',
-              region: 'Mendoza',
-              imageUri: image,
-            });
-          }
-        }, 500);
+      clearInterval(progressInterval);
+      
+      if (!result) {
+        setError('No se pudo identificar un vino en la imagen. Por favor intenta con otra foto donde se vea claramente la etiqueta de la botella.');
+        setIsAnalyzing(false);
+        setProgress(0);
+        return;
       }
-    }, 150);
-  };
-  
+      
+      // Análisis completado con éxito
+      setProgress(100);
+      setAnalysisResult(result);
+      
+      // Después de mostrar 100%, procesar el resultado
+      setTimeout(() => {
+        if (imageUri) {
+          onAnalysisComplete({
+            name: result.name,
+            winery: result.winery,
+            year: result.year,
+            type: result.type,
+            country: result.country,
+            region: result.region,
+            imageUri: imageUri,
+          });
+        }
+      }, 500);
+    } catch (error) {
+      clearInterval(progressInterval);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      console.error('Error al analizar la imagen:', errorMessage);
+      
+      // Determinar un mensaje de error más amigable según el tipo de error
+      let userFriendlyError = 'Hubo un problema al analizar la imagen.';
+      
+      if (errorMessage.includes('403')) {
+        userFriendlyError = 'Error de permisos al conectar con el servicio de IA. Verifica la clave API.';
+      } else if (errorMessage.includes('429')) {
+        userFriendlyError = 'Se ha excedido el límite de peticiones a la API. Intenta más tarde.';
+      } else if (errorMessage.includes('413')) {
+        userFriendlyError = 'La imagen es demasiado grande. Intenta con una imagen más pequeña.';
+      } else if (errorMessage.includes('400')) {
+        userFriendlyError = 'Formato de imagen no válido o petición incorrecta. Intenta con otra imagen.';
+      } else if (errorMessage.includes('404')) {
+        userFriendlyError = 'No se pudo conectar con el servicio de IA. Verifica tu conexión a internet.';
+      } else if (errorMessage.includes('500') || errorMessage.includes('502') || errorMessage.includes('503')) {
+        userFriendlyError = 'El servicio de análisis de IA no está disponible en este momento. Intenta más tarde.';
+      }
+      
+      setError(`${userFriendlyError}\n\nDetalle técnico: ${errorMessage}`);
+      setIsAnalyzing(false);
+      setProgress(0);
+    }
+  }, [onAnalysisComplete]);
+
   // Seleccionar imagen de la galería
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
+
     if (status !== 'granted') {
       Alert.alert('Permiso denegado', 'Necesitamos permiso para acceder a tu galería.');
       return;
     }
-    
+
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [3, 4],
       quality: 1,
     });
-    
+
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setImage(result.assets[0].uri);
-      simulateAIAnalysis();
+      analyzeImage(result.assets[0].uri);
     }
   };
-  
+
   // Tomar foto con la cámara
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    
+
     if (status !== 'granted') {
       Alert.alert('Permiso denegado', 'Necesitamos permiso para usar la cámara.');
       return;
     }
-    
+
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [3, 4],
       quality: 1,
     });
-    
+
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setImage(result.assets[0].uri);
-      simulateAIAnalysis();
+      analyzeImage(result.assets[0].uri);
     }
   };
-  
+
   if (isAnalyzing && image) {
     return (
-      <Animated.View 
+      <Animated.View
         entering={FadeIn.duration(300)}
         style={[styles.aiAnalyzingContainer, { backgroundColor: themeColors.background }]}
       >
@@ -156,21 +205,25 @@ export function AIWineAnalyzer({
             </View>
             <View style={styles.progressInfoContainer}>
               <Text style={styles.progressText}>
-                {progress}%
+                {Math.round(progress)}%
               </Text>
               <Text style={styles.progressSubtext}>
-                {progress < 30 ? 'Identificando botella...' : 
-                 progress < 60 ? 'Analizando etiqueta...' : 
-                 progress < 90 ? 'Verificando detalles...' : 
-                 'Finalizando análisis...'}
+                {progress < 30 ? 'Identificando botella...' :
+                  progress < 60 ? 'Analizando etiqueta...' :
+                    progress < 90 ? 'Verificando detalles...' :
+                      'Finalizando análisis...'}
               </Text>
             </View>
           </View>
         </View>
-        
+
         <TouchableOpacity
           style={styles.cancelButton}
-          onPress={onCancel}
+          onPress={() => {
+            setIsAnalyzing(false);
+            setProgress(0);
+            onCancel();
+          }}
         >
           <Text style={[styles.cancelButtonText, { color: themeColors.burgundy }]}>
             Cancelar
@@ -179,9 +232,39 @@ export function AIWineAnalyzer({
       </Animated.View>
     );
   }
-  
+
+  // Si hay un error, mostrar mensaje
+  if (error && !isAnalyzing) {
+    return (
+      <Animated.View
+        entering={FadeIn.duration(300)}
+        style={[styles.aiContainer, { backgroundColor: themeColors.background }]}
+      >
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="error-outline" size={48} color={WINE_COLORS.error} />
+          <Text style={[styles.errorTitle, { color: themeColors.text }]}>
+            No se pudo analizar la imagen
+          </Text>
+          <Text style={[styles.errorMessage, { color: themeColors.textSecondary }]}>
+            {error}
+          </Text>
+
+          <TouchableOpacity
+            style={[styles.tryAgainButton, { backgroundColor: themeColors.burgundy }]}
+            onPress={() => {
+              setError(null);
+              setImage(null);
+            }}
+          >
+            <Text style={styles.tryAgainText}>Intentar de nuevo</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    );
+  }
+
   return (
-    <Animated.View 
+    <Animated.View
       entering={FadeIn.duration(300)}
       style={[styles.aiContainer, { backgroundColor: themeColors.background }]}
     >
@@ -191,10 +274,10 @@ export function AIWineAnalyzer({
       <Text style={[styles.aiDescription, { color: themeColors.textSecondary }]}>
         Toma una foto de la etiqueta o botella y nuestra IA identificará los detalles
       </Text>
-      
+
       <View style={styles.aiButtonsContainer}>
         <TouchableOpacity
-          style={[styles.aiButton, { 
+          style={[styles.aiButton, {
             shadowColor: colorScheme === 'dark' ? '#000' : '#222'
           }]}
           onPress={takePhoto}
@@ -209,9 +292,9 @@ export function AIWineAnalyzer({
             <Text style={styles.aiButtonText}>Tomar foto</Text>
           </LinearGradient>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
-          style={[styles.aiButton, { 
+          style={[styles.aiButton, {
             shadowColor: colorScheme === 'dark' ? '#000' : '#222'
           }]}
           onPress={pickImage}
@@ -227,13 +310,13 @@ export function AIWineAnalyzer({
           </LinearGradient>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.aiDivider}>
         <View style={[styles.aiDividerLine, { backgroundColor: themeColors.border }]} />
         <Text style={[styles.aiDividerText, { color: themeColors.textSecondary }]}>o</Text>
         <View style={[styles.aiDividerLine, { backgroundColor: themeColors.border }]} />
       </View>
-      
+
       <TouchableOpacity
         style={styles.manualEntryButton}
         onPress={onCancel}
@@ -386,5 +469,36 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontFamily: 'Montserrat-Medium',
+  },
+  // Estilos para pantalla de error
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontFamily: 'Montserrat-Bold',
+    marginTop: 15,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    fontFamily: 'Montserrat-Regular',
+    textAlign: 'center',
+    marginBottom: 25,
+  },
+  tryAgainButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  tryAgainText: {
+    color: WINE_COLORS.white,
+    fontSize: 14,
+    fontFamily: 'Montserrat-SemiBold',
   },
 }); 
