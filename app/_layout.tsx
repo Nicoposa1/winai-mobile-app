@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ReduxProvider } from '@/providers/ReduxProvider';
 // import { GoogleAuthProvider } from '@/contexts/GoogleAuthContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -35,21 +36,23 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AuthProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="auth" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen 
-            name="+not-found" 
-            options={{ 
-              title: 'Not Found',
-              headerShown: true 
-            }} 
-          />
-        </Stack>
-        <StatusBar style="auto" />
-      </AuthProvider>
+      <ReduxProvider>
+        <AuthProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="auth" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen 
+              name="+not-found" 
+              options={{ 
+                title: 'Not Found',
+                headerShown: true 
+              }} 
+            />
+          </Stack>
+          <StatusBar style="auto" />
+        </AuthProvider>
+      </ReduxProvider>
     </ThemeProvider>
   );
 }
