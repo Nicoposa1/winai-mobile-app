@@ -22,6 +22,7 @@ import { WINE_COLORS } from '@/components/wine/WineColors';
 import { AIWineAnalyzer, AIWineAnalysisResult } from '@/components/wine/AIWineAnalyzer';
 import { WineForm, WineFormData } from '@/components/wine/WineForm';
 import { TabSelector, TabOption } from '@/components/wine/TabSelector';
+import { SuccessAnimation } from '@/components/wine/SuccessAnimation';
 
 // Función para generar un ID único
 const generateId = () => Math.random().toString(36).substring(2, 15);
@@ -37,6 +38,10 @@ export default function AddWineScreen() {
   
   // Estados para los tabs
   const [activeTab, setActiveTab] = useState<TabOption>('photo');
+  
+  // Estados para la animación de éxito
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successData, setSuccessData] = useState({ wineName: '', winery: '' });
   
   // Estados para los campos del formulario
   const [formData, setFormData] = useState<WineFormData>({
@@ -77,6 +82,7 @@ export default function AddWineScreen() {
   
   // Limpiar el formulario
   const resetForm = () => {
+    // Reiniciar todo el estado del formulario
     setFormData({
       name: '',
       winery: '',
@@ -89,6 +95,18 @@ export default function AddWineScreen() {
       hasTasted: false,
       storageDate: new Date()
     });
+    
+    // Reiniciar otros estados si es necesario
+    setSuccessData({ wineName: '', winery: '' });
+  };
+  
+  // Manejar cierre de animación de éxito
+  const handleSuccessClose = () => {
+    // Al cerrar la animación de éxito, solo reseteamos el formulario
+    // y ocultamos la animación, pero no navegamos de vuelta
+    setShowSuccess(false);
+    resetForm();
+    // No usamos router.back() para quedarnos en la pantalla
   };
   
   // Función para manejar la adición de un vino
@@ -120,25 +138,20 @@ export default function AddWineScreen() {
       hasTasted: data.hasTasted,
       storageDate: data.storageDate.toISOString(),
       isFavorite: false,
+      dateAdded: Date.now() // Agregar la fecha de adición
     };
     
     // Dispatch de la acción para agregar el vino
     dispatch(addWine(newWine));
     
-    // Mostrar confirmación
-    Alert.alert(
-      '¡Vino añadido!',
-      `${data.name} de ${data.winery} ha sido añadido a tu colección.`,
-      [
-        { 
-          text: 'OK', 
-          onPress: () => {
-            resetForm();
-            router.back();
-          }
-        }
-      ]
-    );
+    // Preparar datos para la animación de éxito
+    setSuccessData({
+      wineName: data.name,
+      winery: data.winery
+    });
+    
+    // Mostrar la animación de éxito
+    setShowSuccess(true);
   };
   
   // Renderizar el contenido según el tab activo
@@ -190,6 +203,16 @@ export default function AddWineScreen() {
         >
           {renderContent()}
         </ScrollView>
+        
+        {/* Animación de éxito */}
+        <SuccessAnimation
+          visible={showSuccess}
+          message="¡Vino añadido!"
+          subMessage={`${successData.wineName} de ${successData.winery} ha sido añadido a tu colección.`}
+          colorScheme={colorScheme as 'light' | 'dark'}
+          onClose={handleSuccessClose}
+          autoClose={false}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

@@ -7,10 +7,10 @@ import { Wine, toggleFavorite } from '@/store/slices/wineSlice';
 
 export default function FavoritesScreen() {
   const dispatch = useAppDispatch();
-  const { wines, favorites } = useAppSelector(state => state.wine);
+  const { wines } = useAppSelector(state => state.wine);
   
   // Filtrar solo los vinos favoritos
-  const favoriteWines = wines.filter(wine => favorites.includes(wine.id));
+  const favoriteWines = wines.filter(wine => wine.isFavorite);
   
   const handleToggleFavorite = (wineId: string) => {
     dispatch(toggleFavorite(wineId));

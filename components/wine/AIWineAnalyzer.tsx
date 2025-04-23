@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,12 +8,24 @@ import {
   ActivityIndicator,
   Alert,
   ColorSchemeName,
-  ScrollView
+  ScrollView,
+  Dimensions
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
-import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { FontAwesome, MaterialIcons, Ionicons } from '@expo/vector-icons';
+import Animated, { 
+  FadeIn, 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withTiming, 
+  Easing,
+  withSequence,
+  withRepeat,
+  interpolateColor
+} from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
+import { Camera } from 'expo-camera';
+import { useTheme } from '@react-navigation/native';
 
 import { WINE_COLORS } from './WineColors';
 import { analyzeWineImage, WineAnalysisResponse } from '../../services/imageService';
@@ -27,6 +39,21 @@ export interface AIWineAnalysisResult {
   country: string;
   region: string;
   imageUri: string;
+}
+
+interface WineTheme {
+  background: string;
+  card: string;
+  text: string;
+  textSecondary: string;
+  textLight: string;
+  input: string;
+  burgundy: string;
+  burgundyLight: string;
+  burgundyDark: string;
+  gold: string;
+  surface: string;
+  border: string;
 }
 
 interface AIWineAnalyzerProps {
@@ -45,21 +72,48 @@ export function AIWineAnalyzer({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<WineAnalysisResponse | null>(null);
-
-  const themeColors = WINE_COLORS[colorScheme ?? 'light'];
+  const theme = WINE_COLORS[colorScheme as keyof typeof WINE_COLORS] as WineTheme;
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Enhanced animated values for progress bar
   const progressWidth = useSharedValue(0);
-
+  const progressOpacity = useSharedValue(0.7);
+  const progressScale = useSharedValue(1);
+  
+  const { colors } = useTheme();
+  
   useEffect(() => {
-    // Animate the progress bar when progress changes
-    progressWidth.value = withTiming(progress, { duration: 150 });
+    // Animate the progress width when progress changes
+    progressWidth.value = withTiming(progress / 100, {
+      duration: 600,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+    });
+    
+    // Add pulse effect when progress changes
+    progressOpacity.value = withSequence(
+      withTiming(1, { duration: 200 }),
+      withTiming(0.7, { duration: 400 })
+    );
+    
+    progressScale.value = withSequence(
+      withTiming(1.03, { duration: 200 }),
+      withTiming(1, { duration: 400 })
+    );
   }, [progress]);
-
+  
+  // Enhanced animated style for progress bar
   const progressAnimatedStyle = useAnimatedStyle(() => {
     return {
-      width: `${progressWidth.value}%`,
-      backgroundColor: themeColors.gold,
+      width: `${progressWidth.value * 100}%`,
+      backgroundColor: interpolateColor(
+        progressWidth.value,
+        [0, 0.5, 1],
+        [theme.burgundyLight, theme.burgundy, theme.burgundyDark]
+      ),
       height: '100%',
-      borderRadius: 4,
+      borderRadius: 8,
+      opacity: progressOpacity.value,
+      transform: [{ scaleX: progressScale.value }],
     };
   });
 
@@ -183,51 +237,83 @@ export function AIWineAnalyzer({
     }
   };
 
+  const getProgressText = () => {
+    if (progress < 20) {
+      return "Identifying bottle...";
+    } else if (progress < 40) {
+      return "Analyzing label...";
+    } else if (progress < 60) {
+      return "Recognizing vintage...";
+    } else if (progress < 80) {
+      return "Determining wine characteristics...";
+    } else {
+      return "Finalizing analysis...";
+    }
+  };
+
+  const getProgressIcon = () => {
+    if (progress < 20) {
+      return "wine";
+    } else if (progress < 40) {
+      return "text";
+    } else if (progress < 60) {
+      return "calendar";
+    } else if (progress < 80) {
+      return "color-palette";
+    } else {
+      return "checkmark-circle";
+    }
+  };
+
   if (isAnalyzing && image) {
     return (
       <Animated.View
         entering={FadeIn.duration(300)}
-        style={[styles.aiAnalyzingContainer, { backgroundColor: themeColors.background }]}
+        style={[styles.aiAnalyzingContainer, { backgroundColor: theme.background }]}
       >
         <View style={styles.imagePreviewContainer}>
           <Image source={{ uri: image }} style={styles.imagePreview} />
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.7)']}
+            colors={['transparent', 'rgba(0,0,0,0.8)']}
             style={styles.imageGradient}
           />
           <View style={styles.analyzeOverlay}>
-            <ActivityIndicator size="large" color={themeColors.gold} />
+            <ActivityIndicator size="large" color={theme.burgundy} />
             <Text style={styles.analyzeText}>
-              Analizando imagen...
+              AI analyzing your wine...
             </Text>
-            <View style={styles.progressBarContainer}>
-              <Animated.View style={progressAnimatedStyle} />
-            </View>
-            <View style={styles.progressInfoContainer}>
-              <Text style={styles.progressText}>
-                {Math.round(progress)}%
-              </Text>
-              <Text style={styles.progressSubtext}>
-                {progress < 30 ? 'Identificando botella...' :
-                  progress < 60 ? 'Analizando etiqueta...' :
-                    progress < 90 ? 'Verificando detalles...' :
-                      'Finalizando análisis...'}
-              </Text>
+            
+            <View style={styles.progressContainer}>
+              <View style={styles.progressInfoContainer}>
+                <View style={styles.progressHeaderContainer}>
+                  <Text style={[styles.progressPercentage, { color: theme.text }]}>
+                    {Math.round(progress)}%
+                  </Text>
+                  <Animated.View style={styles.progressIconContainer}>
+                    <Ionicons name={getProgressIcon() as any} size={18} color={theme.burgundy} />
+                  </Animated.View>
+                </View>
+                
+                <Text style={[styles.progressText, { color: theme.textSecondary }]}>
+                  {getProgressText()}
+                </Text>
+              </View>
+              
+              <View style={styles.progressBarContainer}>
+                <Animated.View style={progressAnimatedStyle} />
+              </View>
             </View>
           </View>
         </View>
 
         <TouchableOpacity
-          style={styles.cancelButton}
+          style={[styles.cancelButton, { backgroundColor: theme.burgundyLight }]}
           onPress={() => {
             setIsAnalyzing(false);
-            setProgress(0);
             onCancel();
           }}
         >
-          <Text style={[styles.cancelButtonText, { color: themeColors.burgundy }]}>
-            Cancelar
-          </Text>
+          <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
       </Animated.View>
     );
@@ -238,19 +324,19 @@ export function AIWineAnalyzer({
     return (
       <Animated.View
         entering={FadeIn.duration(300)}
-        style={[styles.aiContainer, { backgroundColor: themeColors.background }]}
+        style={[styles.aiContainer, { backgroundColor: theme.background }]}
       >
         <View style={styles.errorContainer}>
           <MaterialIcons name="error-outline" size={48} color={WINE_COLORS.error} />
-          <Text style={[styles.errorTitle, { color: themeColors.text }]}>
+          <Text style={[styles.errorTitle, { color: theme.text }]}>
             No se pudo analizar la imagen
           </Text>
-          <Text style={[styles.errorMessage, { color: themeColors.textSecondary }]}>
+          <Text style={[styles.errorMessage, { color: theme.textSecondary }]}>
             {error}
           </Text>
 
           <TouchableOpacity
-            style={[styles.tryAgainButton, { backgroundColor: themeColors.burgundy }]}
+            style={[styles.tryAgainButton, { backgroundColor: theme.burgundy }]}
             onPress={() => {
               setError(null);
               setImage(null);
@@ -266,12 +352,12 @@ export function AIWineAnalyzer({
   return (
     <Animated.View
       entering={FadeIn.duration(300)}
-      style={[styles.aiContainer, { backgroundColor: themeColors.background }]}
+      style={[styles.aiContainer, { backgroundColor: theme.background }]}
     >
-      <Text style={[styles.aiTitle, { color: themeColors.text }]}>
+      <Text style={[styles.aiTitle, { color: theme.text }]}>
         Identifica tu vino con IA
       </Text>
-      <Text style={[styles.aiDescription, { color: themeColors.textSecondary }]}>
+      <Text style={[styles.aiDescription, { color: theme.textSecondary }]}>
         Toma una foto de la etiqueta o botella y nuestra IA identificará los detalles
       </Text>
 
@@ -283,7 +369,7 @@ export function AIWineAnalyzer({
           onPress={takePhoto}
         >
           <LinearGradient
-            colors={[themeColors.burgundy, colorScheme === 'dark' ? '#85263D' : WINE_COLORS.burgundyLight]}
+            colors={[theme.burgundy, colorScheme === 'dark' ? '#85263D' : WINE_COLORS.burgundyLight]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.aiButtonGradient}
@@ -312,16 +398,16 @@ export function AIWineAnalyzer({
       </View>
 
       <View style={styles.aiDivider}>
-        <View style={[styles.aiDividerLine, { backgroundColor: themeColors.border }]} />
-        <Text style={[styles.aiDividerText, { color: themeColors.textSecondary }]}>o</Text>
-        <View style={[styles.aiDividerLine, { backgroundColor: themeColors.border }]} />
+        <View style={[styles.aiDividerLine, { backgroundColor: theme.border }]} />
+        <Text style={[styles.aiDividerText, { color: theme.textSecondary }]}>o</Text>
+        <View style={[styles.aiDividerLine, { backgroundColor: theme.border }]} />
       </View>
 
       <TouchableOpacity
         style={styles.manualEntryButton}
         onPress={onCancel}
       >
-        <Text style={[styles.manualEntryText, { color: themeColors.burgundy }]}>
+        <Text style={[styles.manualEntryText, { color: theme.burgundy }]}>
           Ingresar datos manualmente
         </Text>
       </TouchableOpacity>
@@ -386,89 +472,104 @@ const styles = StyleSheet.create({
     height: 1,
   },
   aiDividerText: {
-    paddingHorizontal: 10,
-    fontFamily: 'Montserrat-Regular',
-  },
-  manualEntryButton: {
-    padding: 10,
-  },
-  manualEntryText: {
+    marginHorizontal: 10,
     fontSize: 16,
     fontFamily: 'Montserrat-Medium',
   },
+  manualEntryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  manualEntryText: {
+    fontSize: 16,
+    fontFamily: 'Montserrat-SemiBold',
+  },
   // Estilos para el analizador de IA
   aiAnalyzingContainer: {
-    padding: 20,
-    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'space-between',
+    padding: 0,
   },
   imagePreviewContainer: {
-    width: '100%',
-    height: 350,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 20,
+    flex: 1,
     position: 'relative',
   },
   imagePreview: {
+    flex: 1,
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
   imageGradient: {
     position: 'absolute',
+    bottom: 0,
     left: 0,
     right: 0,
-    bottom: 0,
     height: '50%',
   },
   analyzeOverlay: {
     position: 'absolute',
-    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
+    padding: 24,
     alignItems: 'center',
-    padding: 20,
   },
   analyzeText: {
-    fontSize: 18,
-    fontFamily: 'Montserrat-SemiBold',
-    color: WINE_COLORS.white,
-    marginTop: 15,
-    marginBottom: 20,
+    fontSize: 22,
+    fontFamily: 'Montserrat-Bold',
+    color: 'white',
+    marginVertical: 16,
+    textAlign: 'center',
   },
-  progressBarContainer: {
-    width: '80%',
-    height: 8,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 4,
-    overflow: 'hidden',
+  progressContainer: {
+    width: '100%',
+    marginTop: 20,
     marginBottom: 10,
   },
   progressInfoContainer: {
-    alignItems: 'center',
-    marginTop: 5,
+    marginBottom: 10,
   },
-  progressText: {
-    fontSize: 18,
-    fontFamily: 'Montserrat-SemiBold',
-    color: WINE_COLORS.white,
+  progressHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 5,
   },
-  progressSubtext: {
-    fontSize: 14,
-    fontFamily: 'Montserrat-Regular',
-    color: WINE_COLORS.white,
-    opacity: 0.9,
-    textAlign: 'center',
+  progressIconContainer: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 12,
+    padding: 6,
   },
-  cancelButton: {
-    padding: 15,
+  progressPercentage: {
+    fontSize: 28,
+    fontFamily: 'Montserrat-Bold',
+    color: 'white',
   },
-  cancelButtonText: {
+  progressText: {
     fontSize: 16,
     fontFamily: 'Montserrat-Medium',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 8,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  cancelButton: {
+    marginVertical: 20,
+    marginHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontFamily: 'Montserrat-SemiBold',
   },
   // Estilos para pantalla de error
   errorContainer: {
