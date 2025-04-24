@@ -8,6 +8,7 @@ import {
   sendPasswordResetEmail 
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { router } from 'expo-router';
 
 interface AuthContextType {
   user: User | null;
@@ -67,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       await signOut(auth);
+      router.navigate("/auth/login");
     } catch (err: any) {
       setError(err.message || 'An error occurred during logout');
       throw err;

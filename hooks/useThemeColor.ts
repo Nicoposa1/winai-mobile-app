@@ -3,19 +3,36 @@
  * https://docs.expo.dev/guides/color-schemes/
  */
 
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { useColorScheme } from 'react-native';
+import { WINE_COLORS } from '@/components/wine/WineColors';
+import { WineTheme, WineThemeCollection } from '@/types/theme';
+
+type ColorName = keyof WineTheme;
+type ThemeKey = 'light' | 'dark';
 
 export function useThemeColor(
   props: { light?: string; dark?: string },
-  colorName: keyof typeof Colors.light & keyof typeof Colors.dark
+  colorName: ColorName | keyof Omit<WineThemeCollection, ThemeKey>
 ) {
-  const theme = useColorScheme() ?? 'light';
-  const colorFromProps = props[theme];
-
+  const colorScheme = useColorScheme() ?? 'light';
+  const colorFromProps = props[colorScheme as ThemeKey];
+  
   if (colorFromProps) {
     return colorFromProps;
-  } else {
-    return Colors[theme][colorName];
   }
+  
+  // Si el color solicitado existe en el tema actual
+  if (colorName in WINE_COLORS[colorScheme as ThemeKey]) {
+    return WINE_COLORS[colorScheme as ThemeKey][colorName as ColorName];
+  }
+  
+  // Si es un color base (fuera de los temas dark/light)
+  if (colorName in WINE_COLORS && 
+      colorName !== 'dark' && 
+      colorName !== 'light') {
+    return (WINE_COLORS as any)[colorName];
+  }
+  
+  // Valor por defecto
+  return WINE_COLORS.light.text;
 }
