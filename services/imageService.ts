@@ -1,3 +1,5 @@
+import * as FileSystem from 'expo-file-system';
+
 const apiKey = process.env.EXPO_PUBLIC_API_KEY
 const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://generativelanguage.googleapis.com';
 
@@ -16,20 +18,10 @@ export interface WineAnalysisResponse {
 // Convertir imagen a base64
 const imageToBase64 = async (imageUri: string): Promise<string> => {
   try {
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
-    
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64String = reader.result as string;
-        // Extraer solo la parte base64 sin el prefijo data:image/jpeg;base64,
-        const base64Data = base64String.split(',')[1];
-        resolve(base64Data);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
+    const base64String = await FileSystem.readAsStringAsync(imageUri, {
+      encoding: FileSystem.EncodingType.Base64,
     });
+    return base64String;
   } catch (error) {
     console.error('Error al convertir imagen a base64:', error);
     throw error;

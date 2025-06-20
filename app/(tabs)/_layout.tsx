@@ -97,6 +97,27 @@ function AnimatedFavoritesIcon({ focused, colorScheme }: { focused: boolean; col
   );
 }
 
+// Componente para animación del tab Profile
+function AnimatedProfileIcon({ focused, colorScheme }: { focused: boolean; colorScheme: ColorSchemeType | null | undefined }) {
+  const colorMode = colorScheme ?? 'light';
+  
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: withTiming(focused ? 1.2 : 1, { duration: 200 }) }],
+      opacity: withTiming(focused ? 1 : 0.8, { duration: 200 })
+    };
+  }, [focused]);
+  return (
+    <Animated.View style={animatedStyle}>
+      <FontAwesome
+        name="user"
+        size={24}
+        color={focused ? Colors[colorMode].wineRed : Colors[colorMode].tabIconDefault}
+      />
+    </Animated.View>
+  );
+}
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
@@ -146,6 +167,15 @@ export default function TabLayout() {
           title: 'Favorites',
           tabBarIcon: ({ focused }) => (
             <AnimatedFavoritesIcon focused={focused} colorScheme={colorScheme} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ focused }) => (
+            <AnimatedProfileIcon focused={focused} colorScheme={colorScheme} />
           ),
         }}
       />

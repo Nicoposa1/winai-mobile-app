@@ -83,6 +83,7 @@ export default function HomeScreen() {
   // Handlers
   const handleProfilePress = () => {
     // Implementar navegación al perfil
+    router.navigate("/(tabs)/profile");
   };
   
   const handleRecommendationPress = (id: string) => {

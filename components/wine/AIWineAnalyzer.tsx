@@ -188,7 +188,7 @@ export function AIWineAnalyzer({
         userFriendlyError = 'El servicio de análisis de IA no está disponible en este momento. Intenta más tarde.';
       }
       
-      setError(`${userFriendlyError}\n\nDetalle técnico: ${errorMessage}`);
+      setError(`${userFriendlyError}`);
       setIsAnalyzing(false);
       setProgress(0);
     }
@@ -216,7 +216,6 @@ export function AIWineAnalyzer({
     }
   };
 
-  // Tomar foto con la cámara
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
