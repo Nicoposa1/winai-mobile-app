@@ -1,102 +1,112 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { 
-  User, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged,
-  sendPasswordResetEmail,
-  Auth,
-} from 'firebase/auth';
-import { auth as firebaseAuth } from '../config/firebase';
-import { router } from 'expo-router';
+import React, { useState, useEffect, createContext, PropsWithChildren, useContext } from 'react';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
+
+export interface Profile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  birth_date: string | null;
+}
 
 interface AuthContextType {
+  session: Session | null;
   user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  forgotPassword: (email: string) => Promise<void>;
-  error: string | null;
+  profile: Profile | null;
+  isLoading: boolean;
+  signOut: () => void;
 }
 
-const auth: Auth = firebaseAuth;
+const AuthContext = createContext<AuthContextType>({
+  session: null,
+  user: null,
+  profile: null,
+  isLoading: true,
+  signOut: () => {},
+});
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export function useAuth(): AuthContextType {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function AuthProvider({ children }: PropsWithChildren) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
+    // Get initial session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      
+      // If session exists, fetch the profile
+      if (session?.user) {
+        try {
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (error && error.code !== 'PGRST116') { // PGRST116 = row not found
+            console.error('Error fetching profile:', error);
+          }
+          
+          setProfile(profileData || null);
+        } catch (e) {
+          console.error('Error fetching profile:', e);
+          setProfile(null);
+        }
+      } else {
+        setProfile(null);
+      }
+      
+      setIsLoading(false);
     });
 
-    return unsubscribe;
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      
+      // If user logs out, clear profile
+      if (!session) {
+        setProfile(null);
+        return;
+      }
+      
+      // If user logs in, fetch their profile
+      try {
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching profile on auth change:', error);
+        }
+        
+        setProfile(profileData || null);
+      } catch (e) {
+        console.error('Error fetching profile on auth change:', e);
+        setProfile(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const register = async (email: string, password: string) => {
-    try {
-      setError(null);
-      await createUserWithEmailAndPassword(auth, email, password);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during registration');
-      throw err;
-    }
-  };
-
-  const login = async (email: string, password: string) => {
-    try {
-      setError(null);
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during login');
-      throw err;
-    }
-  };
-
-  const logout = async () => {
-    try {
-      setError(null);
-      await signOut(auth);
-      router.navigate("/auth/login");
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during logout');
-      throw err;
-    }
-  };
-
-  const forgotPassword = async (email: string) => {
-    try {
-      setError(null);
-      await sendPasswordResetEmail(auth, email);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during password reset');
-      throw err;
-    }
-  };
-
   const value = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    forgotPassword,
-    error
+    session,
+    user: session?.user ?? null,
+    profile,
+    isLoading,
+    signOut: () => supabase.auth.signOut(),
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-} 
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export const useAuth = () => {
+  return useContext(AuthContext);
+}; 

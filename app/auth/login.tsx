@@ -1,26 +1,26 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
-  TouchableOpacity, 
-  KeyboardAvoidingView, 
-  Platform, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   Alert,
   ImageBackground,
   Dimensions,
   Image
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { FormInput } from '@/components/FormInput';
-import { Button } from '@/components/Button';
-import { useAuth } from '@/contexts/AuthContext';
-import { Colors } from '@/constants/Colors';
+import { FormInput } from '../../components/FormInput';
+import { Button } from '../../components/Button';
+import { supabase } from '../../lib/supabase';
+import { Colors } from '../../constants/Colors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,130 +28,59 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<{
-    email: string | null;
-    password: string | null;
-  }>({ email: null, password: null });
+  const router = useRouter();
+  const [formError, setFormError] = useState<{ email: string | null; password: string | null }>({
+    email: null,
+    password: null,
+  });
 
-  const { login, error, forgotPassword } = useAuth();
-
-  const validateForm = () => {
-    const errors: { email: string | null; password: string | null } = { 
-      email: null, 
-      password: null 
-    };
-    
+  const handleForgotPassword = async () => {
     if (!email) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      errors.email = 'Email is invalid';
+      Alert.alert('Email Required', 'Please enter your email address in the field to reset your password.');
+      return;
     }
-    
-    if (!password) {
-      errors.password = 'Password is required';
-    } else if (password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
-    }
-    
-    setValidationErrors(errors);
-    return Object.keys(errors).every(key => !errors[key as keyof typeof errors]);
-  };
 
-  const formatFirebaseError = (errorMsg: string | null): string => {
-    if (!errorMsg) return 'Please check your credentials and try again.';
-    
-    // Extract the error code from the Firebase error message format
-    const errorCode = errorMsg.match(/\(([^)]+)\)/)?.[1];
-    
-    switch (errorCode) {
-      case 'auth/invalid-email':
-        return 'The email address is not valid.';
-      case 'auth/user-disabled':
-        return 'This user account has been disabled.';
-      case 'auth/user-not-found':
-        return 'No account found with this email. Please check your email or create an account.';
-      case 'auth/wrong-password':
-        return 'Incorrect password. Please try again or use the forgot password option.';
-      case 'auth/too-many-requests':
-        return 'Too many unsuccessful login attempts. Please try again later.';
-      case 'auth/network-request-failed':
-        return 'Network error. Please check your internet connection and try again.';
-      case 'auth/configurations-not-found':
-        return 'Firebase configuration error. Please restart the app or contact support.';
-      default:
-        return errorMsg;
+    setIsLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'winai://auth/update-password',
+    });
+
+    if (error) {
+      Alert.alert('Error', error.message);
+    } else {
+      Alert.alert('Password Reset Email Sent', 'Please check your email for a link to reset your password.');
     }
+    setIsLoading(false);
   };
 
   const handleLogin = async () => {
-    if (!validateForm()) return;
+    let errors: { email: string | null; password: string | null } = { email: null, password: null };
+    if (!email) errors.email = 'Email is required.';
+    if (!password) errors.password = 'Password is required.';
+    setFormError(errors);
+    if (errors.email || errors.password) return;
+
     setIsLoading(true);
-    try {
-      await login(email, password);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+
+    console.log(data);
+
+    if (error) {
+      Alert.alert('Login Failed', error.message);
+      console.log(error);
+    } else {
+      router.push('/');
       console.log('Login successful');
-      router.replace('/(tabs)');
-    } catch (err) {
-      Alert.alert('Login Failed', formatFirebaseError(error));
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  const handleForgotPassword = () => {
-    if (!email) {
-      Alert.alert(
-        'Email Required', 
-        'Please enter your email address in the form above to receive a password reset link.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      Alert.alert(
-        'Invalid Email', 
-        'Please enter a valid email address.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    Alert.alert(
-      'Reset Password',
-      `We'll send a password reset link to ${email}. Would you like to proceed?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Send Link',
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              await forgotPassword(email);
-              Alert.alert(
-                'Email Sent',
-                'A password reset link has been sent to your email address.'
-              );
-            } catch (error) {
-              Alert.alert(
-                'Error',
-                'Failed to send password reset email. Please check your email and try again.'
-              );
-            } finally {
-              setIsLoading(false);
-            }
-          },
-        },
-      ],
-      { cancelable: true }
-    );
+    setIsLoading(false);
   };
 
   return (
-    <ImageBackground 
-      source={require('@/assets/images/wine.png')}
+    <ImageBackground
+      source={require('../../assets/images/wine.png')}
       style={styles.backgroundImage}
       resizeMode="cover"
     >
@@ -182,9 +111,9 @@ export default function LoginScreen() {
                     autoComplete="email"
                     autoCapitalize="none"
                     secureTextEntry={false}
-                    error={validationErrors.email}
+                    error={formError.email}
                   />
-                  
+
                   <FormInput
                     label="Password"
                     value={password}
@@ -194,10 +123,10 @@ export default function LoginScreen() {
                     textContentType="password"
                     autoComplete="password"
                     autoCapitalize="none"
-                    error={validationErrors.password}
+                    error={formError.password}
                   />
-                  
-                  <TouchableOpacity 
+
+                  <TouchableOpacity
                     onPress={handleForgotPassword}
                     style={styles.forgotPasswordContainer}
                   >
@@ -218,22 +147,22 @@ export default function LoginScreen() {
                   </View>
 
                   <View style={styles.socialContainer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.socialButton}
                     >
-                      <Image 
-                        source={require('@/assets/images/facebook.png')} 
-                        style={styles.socialIcon} 
+                      <Image
+                        source={require('../../assets/images/facebook.png')}
+                        style={styles.socialIcon}
                       />
                       <Text style={styles.socialText}>Facebook</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.socialButton}
                     >
-                      <Image 
-                        source={require('@/assets/images/google.png')} 
-                        style={styles.socialIcon} 
+                      <Image
+                        source={require('../../assets/images/google.png')}
+                        style={styles.socialIcon}
                       />
                       <Text style={styles.socialText}>Google</Text>
                     </TouchableOpacity>

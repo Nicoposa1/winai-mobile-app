@@ -9,13 +9,13 @@ import { router } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = WINE_COLORS[colorScheme];
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await signOut();
     } catch (error) {
       Alert.alert("Logout Failed", "An error occurred while trying to log out.");
     }
@@ -36,11 +36,11 @@ export default function ProfileScreen() {
     >
       <Animated.View style={styles.header} entering={FadeIn.duration(500)}>
         <Image
-          source={{ uri: user.photoURL || 'https://www.gravatar.com/avatar/?d=mp' }}
+          source={{ uri: 'https://www.gravatar.com/avatar/?d=mp' }}
           style={styles.avatar}
         />
         <Text style={[styles.name, { color: theme.text }]}>
-          {user.displayName || 'Wine Lover'}
+          Wine Lover
         </Text>
         <Text style={[styles.email, { color: theme.textSecondary }]}>
           {user.email}

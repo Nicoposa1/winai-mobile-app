@@ -4,26 +4,13 @@ import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { ColorSchemeName } from 'react-native';
+import { Colors } from '@/constants/Colors';
+import { Wine } from '@/types/wine';
 
 // Constantes para el tamaño
 const { width } = Dimensions.get('window');
 const GRID_CARD_WIDTH = (width - 60) / 2; // 2 columnas con margen
 const LIST_CARD_WIDTH = width - 40; // Lista con margen
-
-export interface Wine {
-  id: string;
-  name: string;
-  winery: string;
-  year: number;
-  type: 'red' | 'white' | 'rose' | 'sparkling' | 'other';
-  region?: string;
-  country?: string;
-  imageUrl?: string; 
-  isFavorite: boolean;
-  hasTasted: boolean;
-  daysToOptimal?: number; // Días para punto óptimo
-  notes?: string;
-}
 
 interface WineCardProps {
   wine: Wine;
@@ -78,7 +65,7 @@ export function WineCard({
         >
           <View style={styles.imageContainer}>
             <Image 
-              source={{ uri: wine.imageUrl || defaultImage[wine.type] }} 
+              source={{ uri: wine.image_url || defaultImage[wine.type] }} 
               style={styles.gridImage} 
               resizeMode="cover"
             />
@@ -154,7 +141,7 @@ export function WineCard({
       >
         <View style={styles.listImageContainer}>
           <Image 
-            source={{ uri: wine.imageUrl || defaultImage[wine.type] }} 
+            source={{ uri: wine.image_url || defaultImage[wine.type] }} 
             style={styles.listImage} 
             resizeMode="cover"
           />

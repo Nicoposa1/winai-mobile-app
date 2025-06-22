@@ -6,6 +6,7 @@ import { store } from './store/store';
 import { useColorScheme } from 'react-native';
 import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { ExpoRoot } from 'expo-router';
+import 'react-native-url-polyfill/auto';
 
 export default function App() {
   const colorScheme = useColorScheme();

@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 
-const apiKey = process.env.EXPO_PUBLIC_API_KEY
+const apiKey = 'AIzaSyDPihgsrDMPUlPHD1RTssF1erIUaWJiZjQ'
 const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://generativelanguage.googleapis.com';
 
 export interface WineAnalysisResponse {

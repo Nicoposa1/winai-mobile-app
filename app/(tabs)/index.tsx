@@ -39,8 +39,18 @@ export default function HomeScreen() {
   // Colores según el tema
   const theme = BACKGROUND_COLORS[colorScheme ?? 'light'];
   
-  // Nombre del usuario (podría venir del contexto de autenticación)
-  const userName = user?.displayName || 'Nico';
+  // Get user's name, fallback to part of email
+  const getDisplayName = () => {
+    if (!user) return 'Guest';
+    // In the future, you might store a full name in user_metadata
+    if (user.user_metadata?.full_name) {
+      return user.user_metadata.full_name;
+    }
+    // As a fallback, use the part of the email before the @
+    return user.email?.split('@')[0] || 'User';
+  };
+
+  const displayName = getDisplayName();
   
   // Datos simulados para recomendaciones
   const recommendations = [
@@ -112,7 +122,7 @@ export default function HomeScreen() {
       >
         {/* Cabecera con saludo */}
         <Header
-          userName={userName}
+          userName={displayName}
           colorScheme={colorScheme}
           onProfilePress={handleProfilePress}
         />
@@ -164,5 +174,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
+    marginBottom: 20,
   },
 });
