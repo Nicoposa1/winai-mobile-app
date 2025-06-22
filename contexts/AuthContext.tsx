@@ -14,6 +14,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
+  isSigningOut: boolean;
   signOut: () => void;
 }
 
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   isLoading: true,
+  isSigningOut: false,
   signOut: () => {},
 });
 
@@ -29,6 +31,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
     // Get initial session
@@ -61,11 +64,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       
-      // If user logs out, clear profile
-      if (!session) {
+      // If user logs out, clear profile immediately
+      if (!session || event === 'SIGNED_OUT') {
         setProfile(null);
         return;
       }
@@ -97,7 +100,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     user: session?.user ?? null,
     profile,
     isLoading,
-    signOut: () => supabase.auth.signOut(),
+    isSigningOut,
+    signOut: async () => {
+      // Set signing out flag and clear state immediately
+      setIsSigningOut(true);
+      setProfile(null);
+      setSession(null);
+      await supabase.auth.signOut();
+      setIsSigningOut(false);
+    },
   };
 
   return (

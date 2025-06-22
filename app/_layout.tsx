@@ -18,26 +18,33 @@ import { supabase } from '../lib/supabase';
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
-  const { session, profile, isLoading } = useAuth();
+  const { session, profile, isLoading, isSigningOut } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading) return; // Wait for auth to load
+    if (isLoading || isSigningOut) return; // Wait for auth to load or signing out to complete
 
+    // Priority 1: No session = go to login (this takes precedence)
     if (!session) {
-      // User is not authenticated, go to login
       router.replace('/auth/login');
-    } else if (!profile?.first_name || !profile?.last_name) {
-      // User is authenticated but profile is incomplete, go to complete profile
-      router.replace('/auth/complete-profile');
-    } else {
-      // User is authenticated and profile is complete, go to main app
-      router.replace('/(tabs)');
+      return;
     }
-  }, [isLoading, session, profile, router]);
 
-  // Show loading spinner while checking auth
-  if (isLoading) {
+    // Priority 2: Session exists, check profile (but only if we have a session)
+    if (session && profile !== null) {
+      if (!profile.first_name || !profile.last_name) {
+        // User is authenticated but profile is incomplete
+        router.replace('/auth/complete-profile');
+      } else {
+        // User is authenticated and profile is complete
+        router.replace('/(tabs)');
+      }
+    }
+    // If session exists but profile is still null, wait for profile to load
+  }, [isLoading, isSigningOut, session, profile, router]);
+
+  // Show loading spinner while checking auth or signing out
+  if (isLoading || isSigningOut) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color={Colors.light.tint} />
