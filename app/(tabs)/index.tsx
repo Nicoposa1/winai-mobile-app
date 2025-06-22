@@ -33,20 +33,27 @@ const BACKGROUND_COLORS = {
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { wines } = useAppSelector(state => state.wine);
   
   // Colores según el tema
   const theme = BACKGROUND_COLORS[colorScheme ?? 'light'];
   
-  // Get user's name, fallback to part of email
+  // Get user's name from profile, fallback to email
   const getDisplayName = () => {
     if (!user) return 'Guest';
-    // In the future, you might store a full name in user_metadata
+    
+    // Use profile name if available
+    if (profile?.first_name) {
+      return profile.last_name ? `${profile.first_name}` : profile.first_name;
+    }
+    
+    // Fallback to user metadata if available
     if (user.user_metadata?.full_name) {
       return user.user_metadata.full_name;
     }
-    // As a fallback, use the part of the email before the @
+    
+    // Final fallback: use part of email before @
     return user.email?.split('@')[0] || 'User';
   };
 
@@ -92,8 +99,8 @@ export default function HomeScreen() {
   
   // Handlers
   const handleProfilePress = () => {
-    // Implementar navegación al perfil
-    router.navigate("/(tabs)/profile");
+    // Navegar al perfil fuera de los tabs
+    router.push("/profile");
   };
   
   const handleRecommendationPress = (id: string) => {

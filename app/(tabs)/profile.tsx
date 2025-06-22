@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, Alert, TouchableOpacity } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { WINE_COLORS } from '@/components/wine/WineColors';
@@ -7,6 +7,7 @@ import { StatsCard } from '@/components/profile/StatsCard';
 import { ProfileOption } from '@/components/profile/ProfileOption';
 import { router } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { supabase } from '@/lib/supabase';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -21,6 +22,79 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure you want to permanently delete your account? This action cannot be undone. All your data, including wines, favorites, and profile information will be lost.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Show loading state
+              Alert.alert("Deleting Account", "Please wait while we delete your account...");
+
+              // Delete user account via backend API
+              if (!user) {
+                Alert.alert("Error", "User not found. Please try logging in again.");
+                return;
+              }
+
+              // Call backend to delete user (requires service_role key)
+              const session = await supabase.auth.getSession();
+              console.log('Session data:', session.data);
+              
+              if (!session.data.session?.access_token) {
+                Alert.alert("Error", "No valid session found. Please log in again.");
+                return;
+              }
+              
+              const response = await fetch('http://192.168.0.3:3000/api/users/delete', {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.data.session.access_token}`,
+                },
+                body: JSON.stringify({ userId: user.id }),
+              });
+
+              if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Error deleting user:', errorData);
+                Alert.alert(
+                  "Error",
+                  errorData.message || "Failed to delete account. Please try again or contact support."
+                );
+                return;
+              }
+
+              // Sign out the user (this will redirect to login automatically)
+              await signOut();
+
+              // Show success message
+              Alert.alert(
+                "Account Deleted",
+                "Your account has been successfully deleted."
+              );
+
+            } catch (error) {
+              console.error('Error during account deletion:', error);
+              Alert.alert(
+                "Error",
+                "An unexpected error occurred. Please try again or contact support."
+              );
+            }
+          }
+        }
+      ]
+    );
+  };
+
   if (!user) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -30,9 +104,10 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView 
+    <ScrollView
       style={[styles.container, { backgroundColor: theme.background }]}
       contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
     >
       <Animated.View style={styles.header} entering={FadeIn.duration(500)}>
         <Image
@@ -55,22 +130,32 @@ export default function ProfileScreen() {
 
       <Animated.View style={styles.optionsContainer} entering={FadeInDown.delay(400).duration(400)}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Account</Text>
-        <ProfileOption icon="person-outline" label="Edit Profile" onPress={() => {}} colorScheme={colorScheme} delay={500} />
-        <ProfileOption icon="notifications-none" label="Notifications" onPress={() => {}} colorScheme={colorScheme} delay={600} />
-        <ProfileOption icon="security" label="Security" onPress={() => {}} colorScheme={colorScheme} delay={700} />
-        
+        <ProfileOption icon="person-outline" label="Edit Profile" onPress={() => { }} colorScheme={colorScheme} delay={500} />
+        <ProfileOption icon="notifications-none" label="Notifications" onPress={() => { }} colorScheme={colorScheme} delay={600} />
+        <ProfileOption icon="security" label="Security" onPress={() => { }} colorScheme={colorScheme} delay={700} />
+
         <Text style={[styles.sectionTitle, { color: theme.text }]}>General</Text>
-        <ProfileOption icon="language" label="Language" onPress={() => {}} colorScheme={colorScheme} delay={800} />
-        <ProfileOption icon="help-outline" label="Help & Support" onPress={() => {}} colorScheme={colorScheme} delay={900} />
-        
-        <ProfileOption 
-          icon="logout" 
-          label="Log Out" 
-          onPress={handleLogout} 
+        <ProfileOption icon="language" label="Language" onPress={() => { }} colorScheme={colorScheme} delay={800} />
+        <ProfileOption icon="help-outline" label="Help & Support" onPress={() => { }} colorScheme={colorScheme} delay={900} />
+
+        <ProfileOption
+          icon="logout"
+          label="Log Out"
+          onPress={handleLogout}
           colorScheme={colorScheme}
-          isDestructive 
+          isDestructive
           delay={1000}
         />
+
+        {/* Botón discreto para eliminar cuenta */}
+        <TouchableOpacity
+          style={styles.deleteAccountButton}
+          onPress={handleDeleteAccount}
+        >
+          <Text style={[styles.deleteAccountText, { color: theme.textSecondary }]}>
+            Delete Account
+          </Text>
+        </TouchableOpacity>
       </Animated.View>
     </ScrollView>
   );
@@ -118,5 +203,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-SemiBold',
     marginBottom: 10,
     marginTop: 20,
+  },
+  deleteAccountButton: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    marginTop: 10,
+  },
+  deleteAccountText: {
+    fontSize: 12,
+    fontFamily: 'Montserrat-Regular',
+    opacity: 0.6,
   }
 }); 

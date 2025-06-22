@@ -59,19 +59,28 @@ export default function CompleteProfileScreen() {
     return '';
   };
 
+  const capitalizeWords = (text: string) => {
+    return text
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   const handleFirstNameChange = (text: string) => {
-    setFirstName(text);
+    const capitalizedText = capitalizeWords(text);
+    setFirstName(capitalizedText);
     // Only show errors if the user has already tried to submit
     if (showErrors) {
-      setErrors(prev => ({ ...prev, firstName: validateFirstName(text) }));
+      setErrors(prev => ({ ...prev, firstName: validateFirstName(capitalizedText) }));
     }
   };
 
   const handleLastNameChange = (text: string) => {
-    setLastName(text);
+    const capitalizedText = capitalizeWords(text);
+    setLastName(capitalizedText);
     // Only show errors if the user has already tried to submit
     if (showErrors) {
-      setErrors(prev => ({ ...prev, lastName: validateLastName(text) }));
+      setErrors(prev => ({ ...prev, lastName: validateLastName(capitalizedText) }));
     }
   };
 
@@ -180,6 +189,8 @@ export default function CompleteProfileScreen() {
             textContentType="name"
             autoComplete="name-given"
             autoCapitalize="words"
+            autoCorrect={false}
+            keyboardType="default"
             secureTextEntry={false}
             error={showErrors ? errors.firstName : null}
             darkMode={isDark}
@@ -193,6 +204,8 @@ export default function CompleteProfileScreen() {
             textContentType="familyName"
             autoComplete="name-family"
             autoCapitalize="words"
+            autoCorrect={false}
+            keyboardType="default"
             secureTextEntry={false}
             error={showErrors ? errors.lastName : null}
             darkMode={isDark}

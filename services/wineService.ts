@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { Wine } from '../types/wine'; // We'll need to create this type in the frontend as well
 
-const API_URL = 'http://192.168.0.3:8080/api';
+const API_URL = 'http://192.168.0.3:3000/api';
 
 async function getAuthHeaders() {
   const { data: { session } } = await supabase.auth.getSession();

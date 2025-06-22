@@ -11,6 +11,8 @@ interface FormInputProps {
   textContentType: TextInputProps['textContentType'];
   autoComplete: TextInputProps['autoComplete'];
   autoCapitalize: TextInputProps['autoCapitalize'];
+  autoCorrect?: boolean;
+  keyboardType?: TextInputProps['keyboardType'];
   darkMode?: boolean;
 }
 
@@ -24,6 +26,8 @@ export const FormInput = ({
   textContentType, 
   autoComplete, 
   autoCapitalize,
+  autoCorrect = true,
+  keyboardType = 'default',
   darkMode = false
 }: FormInputProps) => {
   return (
@@ -39,6 +43,8 @@ export const FormInput = ({
         textContentType={textContentType}
         autoComplete={autoComplete}
         autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
+        keyboardType={keyboardType}
         style={[
           styles.input,
           darkMode ? styles.inputDark : styles.inputLight,
