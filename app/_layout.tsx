@@ -23,10 +23,23 @@ function RootLayoutNav() {
   const segments = useSegments();
 
   useEffect(() => {
+    console.log('🔄 RootLayoutNav useEffect:', {
+      isLoading,
+      isSigningOut,
+      hasSession: !!session,
+      profile: profile ? {
+        id: profile.id,
+        first_name: profile.first_name,
+        last_name: profile.last_name
+      } : null,
+      currentSegments: segments
+    });
+
     if (isLoading || isSigningOut) return; // Wait for auth to load or signing out to complete
 
     // Priority 1: No session = go to login (this takes precedence)
     if (!session) {
+      console.log('📍 No session, navigating to login');
       router.replace('/auth/login');
       return;
     }
@@ -35,15 +48,22 @@ function RootLayoutNav() {
     if (session && profile !== null) {
       if (!profile.first_name || !profile.last_name) {
         // User is authenticated but profile is incomplete
+        console.log('📍 Profile incomplete, navigating to complete-profile');
         router.replace('/auth/complete-profile');
       } else {
         // User is authenticated and profile is complete
+        console.log('📍 Profile complete, checking if should navigate to tabs');
         // Only navigate to tabs if we're not already in the authenticated area
         const inAuthenticatedArea = segments[0] === '(tabs)' || segments[0] === 'profile';
         if (!inAuthenticatedArea) {
+          console.log('📍 Not in authenticated area, navigating to tabs');
           router.replace('/(tabs)');
+        } else {
+          console.log('📍 Already in authenticated area, staying');
         }
       }
+    } else if (session && profile === null) {
+      console.log('📍 Session exists but profile is null, waiting for profile to load');
     }
     // If session exists but profile is still null, wait for profile to load
   }, [isLoading, isSigningOut, session, profile, router, segments]);

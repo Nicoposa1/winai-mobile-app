@@ -11,7 +11,7 @@ import { Colors } from '../../constants/Colors';
 import { useColorScheme } from '../../hooks/useColorScheme';
 
 export default function CompleteProfileScreen() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -157,13 +157,20 @@ export default function CompleteProfileScreen() {
     if (error) {
       console.error('❌ Update error:', error);
       Alert.alert('Error', error.message);
+      setLoading(false);
     } else {
       console.log('✅ Profile updated successfully:', data);
-      Alert.alert('Profile Complete!', 'Welcome to WinAI.');
-      // The AuthContext will automatically detect this change and navigate to home
-      router.replace('/(tabs)');
+      
+      // Refresh the profile in the context
+      await refreshProfile();
+      
+      console.log('🔄 Profile refreshed in context');
+      setLoading(false);
+      
+      // Don't show alert or navigate manually - let the AuthContext handle navigation
+      // Alert.alert('Profile Complete!', 'Welcome to WinAI.');
+      // router.replace('/(tabs)');
     }
-    setLoading(false);
   }
 
   const isDark = colorScheme === 'dark';

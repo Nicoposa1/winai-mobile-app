@@ -11,7 +11,8 @@ import {
   Alert,
   ImageBackground,
   Dimensions,
-  Image
+  Image,
+  ActivityIndicator
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -21,6 +22,7 @@ import { FormInput } from '../../components/FormInput';
 import { Button } from '../../components/Button';
 import { supabase } from '../../lib/supabase';
 import { Colors } from '../../constants/Colors';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,7 +30,9 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
+  const { signInWithGoogle } = useAuth();
   const [formError, setFormError] = useState<{ email: string | null; password: string | null }>({
     email: null,
     password: null,
@@ -76,6 +80,24 @@ export default function LoginScreen() {
       console.log('Login successful');
     }
     setIsLoading(false);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const result = await signInWithGoogle();
+      if (result.success) {
+        // Para OAuth, no redirigimos aquí porque el navegador se abre
+        // El callback manejará la redirección final
+        console.log('✅ Google OAuth iniciado correctamente');
+      } else {
+        Alert.alert('Google Sign-In Failed', result.error || 'An error occurred during Google sign-in');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setIsGoogleLoading(false);
+    }
   };
 
   return (
@@ -159,12 +181,20 @@ export default function LoginScreen() {
 
                     <TouchableOpacity
                       style={styles.socialButton}
+                      onPress={handleGoogleSignIn}
+                      disabled={isGoogleLoading || isLoading}
                     >
-                      <Image
-                        source={require('../../assets/images/google.png')}
-                        style={styles.socialIcon}
-                      />
-                      <Text style={styles.socialText}>Google</Text>
+                      {isGoogleLoading ? (
+                        <ActivityIndicator size="small" color={Colors.dark.wineRed} />
+                      ) : (
+                        <>
+                          <Image
+                            source={require('../../assets/images/google.png')}
+                            style={styles.socialIcon}
+                          />
+                          <Text style={styles.socialText}>Google</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
                   </View>
 
