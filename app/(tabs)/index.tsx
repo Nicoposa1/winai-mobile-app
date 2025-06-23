@@ -130,6 +130,7 @@ export default function HomeScreen() {
         {/* Cabecera con saludo */}
         <Header
           userName={displayName}
+          avatarUrl={profile?.avatar_url}
           colorScheme={colorScheme}
           onProfilePress={handleProfilePress}
         />

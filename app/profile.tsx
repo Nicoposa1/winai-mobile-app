@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { WINE_COLORS } from '@/components/wine/WineColors';
@@ -7,11 +7,14 @@ import { StatsCard } from '@/components/profile/StatsCard';
 import { ProfileOption } from '@/components/profile/ProfileOption';
 import { router } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
+import { pickImage, uploadAvatar, updateProfileAvatar } from '@/services/imageService';
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = WINE_COLORS[colorScheme];
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -19,6 +22,54 @@ export default function ProfileScreen() {
     } catch (error) {
       Alert.alert("Logout Failed", "An error occurred while trying to log out.");
     }
+  };
+
+  const handleAvatarPress = async () => {
+    if (!user) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      const imageResult = await pickImage();
+      
+      if (imageResult.success && imageResult.imageUri) {
+        const uploadResult = await uploadAvatar(imageResult.imageUri, user.id);
+        
+        if (uploadResult.success && uploadResult.url) {
+          const updateSuccess = await updateProfileAvatar(user.id, uploadResult.url);
+          
+          if (updateSuccess) {
+            await refreshProfile(); // Refresh the profile to get the new avatar
+            Alert.alert('Success', 'Profile photo updated successfully!');
+          } else {
+            Alert.alert('Error', 'Failed to update profile photo');
+          }
+        } else {
+          Alert.alert('Error', uploadResult.error || 'Failed to upload image');
+        }
+      }
+    } catch (error) {
+      console.error('Avatar update error:', error);
+      Alert.alert('Error', 'Failed to update profile photo');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const getDisplayName = () => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name} ${profile.last_name}`;
+    }
+    if (profile?.first_name) {
+      return profile.first_name;
+    }
+    return user?.email?.split('@')[0] || 'Wine Lover';
+  };
+
+  const getAvatarUri = () => {
+    if (profile?.avatar_url) {
+      return profile.avatar_url;
+    }
+    return 'https://www.gravatar.com/avatar/?d=mp';
   };
 
   if (!user) {
@@ -35,12 +86,27 @@ export default function ProfileScreen() {
       contentContainerStyle={styles.contentContainer}
     >
       <Animated.View style={styles.header} entering={FadeIn.duration(500)}>
-        <Image
-          source={{ uri: 'https://www.gravatar.com/avatar/?d=mp' }}
-          style={styles.avatar}
-        />
+        <TouchableOpacity 
+          style={styles.avatarContainer} 
+          onPress={handleAvatarPress}
+          disabled={isUploadingAvatar}
+        >
+          <Image
+            source={{ uri: getAvatarUri() }}
+            style={styles.avatar}
+          />
+          {isUploadingAvatar ? (
+            <View style={styles.uploadingOverlay}>
+              <ActivityIndicator size="small" color="white" />
+            </View>
+          ) : (
+            <View style={styles.cameraOverlay}>
+              <Ionicons name="camera" size={20} color="white" />
+            </View>
+          )}
+        </TouchableOpacity>
         <Text style={[styles.name, { color: theme.text }]}>
-          Wine Lover
+          {getDisplayName()}
         </Text>
         <Text style={[styles.email, { color: theme.textSecondary }]}>
           {user.email}
@@ -89,13 +155,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 30,
   },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    marginBottom: 15,
     borderWidth: 3,
     borderColor: WINE_COLORS.light.burgundy,
+  },
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: WINE_COLORS.light.burgundy,
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   name: {
     fontSize: 24,

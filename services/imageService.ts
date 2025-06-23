@@ -1,4 +1,7 @@
 import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '../lib/supabase';
+import { Alert } from 'react-native';
 
 const apiKey = 'AIzaSyDPihgsrDMPUlPHD1RTssF1erIUaWJiZjQ'
 const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://generativelanguage.googleapis.com';
@@ -13,6 +16,18 @@ export interface WineAnalysisResponse {
   flavorProfile: string;
   foodPairings: string[];
   fullDescription: string;
+}
+
+export interface ImagePickerResult {
+  success: boolean;
+  imageUri?: string;
+  error?: string;
+}
+
+export interface UploadResult {
+  success: boolean;
+  url?: string;
+  error?: string;
 }
 
 // Convertir imagen a base64
@@ -137,4 +152,184 @@ export const analyzeWineImage = async (imageUri: string): Promise<WineAnalysisRe
     console.error('Error al analizar la imagen:', error);
     throw error;
   }
-}; 
+};
+
+// Request permissions for camera and media library
+export async function requestPermissions(): Promise<boolean> {
+  try {
+    const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+    const mediaLibraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    return cameraPermission.status === 'granted' && mediaLibraryPermission.status === 'granted';
+  } catch (error) {
+    console.error('Error requesting permissions:', error);
+    return false;
+  }
+}
+
+// Show action sheet to choose between camera and gallery
+export async function pickImage(): Promise<ImagePickerResult> {
+  try {
+    const hasPermissions = await requestPermissions();
+    if (!hasPermissions) {
+      return {
+        success: false,
+        error: 'Camera and photo library permissions are required'
+      };
+    }
+
+    return new Promise((resolve) => {
+      Alert.alert(
+        'Select Photo',
+        'Choose how you want to select your profile photo',
+        [
+          {
+            text: 'Camera',
+            onPress: async () => {
+              const result = await takePhoto();
+              resolve(result);
+            }
+          },
+          {
+            text: 'Gallery',
+            onPress: async () => {
+              const result = await pickFromGallery();
+              resolve(result);
+            }
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => resolve({ success: false })
+          }
+        ]
+      );
+    });
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Failed to pick image'
+    };
+  }
+}
+
+// Take photo with camera
+async function takePhoto(): Promise<ImagePickerResult> {
+  try {
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1], // Square aspect ratio for profile pics
+      quality: 0.8,
+    });
+
+    if (result.canceled) {
+      return { success: false };
+    }
+
+    return {
+      success: true,
+      imageUri: result.assets[0].uri
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Failed to take photo'
+    };
+  }
+}
+
+// Pick from gallery
+async function pickFromGallery(): Promise<ImagePickerResult> {
+  try {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1], // Square aspect ratio for profile pics
+      quality: 0.8,
+    });
+
+    if (result.canceled) {
+      return { success: false };
+    }
+
+    return {
+      success: true,
+      imageUri: result.assets[0].uri
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Failed to pick from gallery'
+    };
+  }
+}
+
+// Upload image to Supabase Storage
+export async function uploadAvatar(imageUri: string, userId: string): Promise<UploadResult> {
+  try {
+    // Get file extension
+    const fileExtension = imageUri.split('.').pop() || 'jpg';
+    const fileName = `${userId}/avatar.${fileExtension}`;
+
+    // Read file using FileSystem instead of blob.arrayBuffer
+    const fileData = await FileSystem.readAsStringAsync(imageUri, {
+      encoding: FileSystem.EncodingType.Base64
+    });
+
+    // Convert base64 to Uint8Array
+    const bytes = Uint8Array.from(atob(fileData), c => c.charCodeAt(0));
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, bytes, {
+        contentType: `image/${fileExtension}`,
+        upsert: true // This will replace existing file
+      });
+
+    if (error) {
+      console.error('Upload error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    return {
+      success: true,
+      url: publicUrl
+    };
+  } catch (error) {
+    console.error('Upload error:', error);
+    return {
+      success: false,
+      error: 'Failed to upload image'
+    };
+  }
+}
+
+// Update user profile with new avatar URL
+export async function updateProfileAvatar(userId: string, avatarUrl: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ avatar_url: avatarUrl })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Profile update error:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Profile update error:', error);
+    return false;
+  }
+} 

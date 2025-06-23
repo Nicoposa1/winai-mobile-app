@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '@/constants/Colors';
 import { ColorSchemeName } from 'react-native';
@@ -7,12 +7,11 @@ import { ColorSchemeName } from 'react-native';
 interface HeaderProps {
   userName: string;
   colorScheme: ColorSchemeName;
-  onProfilePress: () => void;
 }
 
-export function Header({ userName, colorScheme, onProfilePress }: HeaderProps) {
+export function Header({ userName, colorScheme }: HeaderProps) {
   const theme = colorScheme ?? 'light';
-  
+
   return (
     <Animated.View 
       entering={FadeInDown.duration(600).delay(100)} 
@@ -26,13 +25,6 @@ export function Header({ userName, colorScheme, onProfilePress }: HeaderProps) {
           Hola {userName}
         </Text>
       </View>
-      
-      <TouchableOpacity onPress={onProfilePress} style={styles.profileButton}>
-        <Image 
-          source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100' }} 
-          style={styles.profileImage} 
-        />
-      </TouchableOpacity>
     </Animated.View>
   );
 }

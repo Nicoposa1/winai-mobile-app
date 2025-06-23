@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Alert, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { WINE_COLORS } from '@/components/wine/WineColors';
@@ -8,17 +8,71 @@ import { ProfileOption } from '@/components/profile/ProfileOption';
 import { router } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
+import { pickImage, uploadAvatar, updateProfileAvatar } from '@/services/imageService';
+import { FontAwesome } from '@expo/vector-icons';
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = WINE_COLORS[colorScheme];
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const handleLogout = async () => {
     try {
       await signOut();
     } catch (error) {
       Alert.alert("Logout Failed", "An error occurred while trying to log out.");
+    }
+  };
+
+  const handleChangeAvatar = async () => {
+    if (!user) {
+      Alert.alert('Error', 'User not found');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+
+    try {
+      // Pick image from camera or gallery
+      const imageResult = await pickImage();
+      
+      if (!imageResult.success || !imageResult.imageUri) {
+        setIsUploadingAvatar(false);
+        if (imageResult.error) {
+          Alert.alert('Error', imageResult.error);
+        }
+        return;
+      }
+
+      // Upload image to Supabase Storage
+      const uploadResult = await uploadAvatar(imageResult.imageUri, user.id);
+      
+      if (!uploadResult.success || !uploadResult.url) {
+        Alert.alert('Upload Failed', uploadResult.error || 'Failed to upload image');
+        setIsUploadingAvatar(false);
+        return;
+      }
+
+      // Update profile in database
+      const updateSuccess = await updateProfileAvatar(user.id, uploadResult.url);
+      
+      if (!updateSuccess) {
+        Alert.alert('Update Failed', 'Failed to update profile');
+        setIsUploadingAvatar(false);
+        return;
+      }
+
+      Alert.alert('Success', 'Profile photo updated successfully!');
+      
+      // Refresh the auth context to get updated profile
+      // The profile will be automatically updated when the AuthContext refetches
+      
+    } catch (error) {
+      console.error('Error changing avatar:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -110,12 +164,32 @@ export default function ProfileScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Animated.View style={styles.header} entering={FadeIn.duration(500)}>
-        <Image
-          source={{ uri: 'https://www.gravatar.com/avatar/?d=mp' }}
-          style={styles.avatar}
-        />
+        <TouchableOpacity 
+          style={styles.avatarContainer}
+          onPress={handleChangeAvatar}
+          disabled={isUploadingAvatar}
+        >
+          <Image
+            source={{ 
+              uri: profile?.avatar_url || 'https://www.gravatar.com/avatar/?d=mp' 
+            }}
+            style={styles.avatar}
+          />
+          {isUploadingAvatar ? (
+            <View style={styles.avatarOverlay}>
+              <ActivityIndicator size="large" color="#fff" />
+            </View>
+          ) : (
+            <View style={styles.avatarOverlay}>
+              <FontAwesome name="camera" size={20} color="#fff" />
+            </View>
+          )}
+        </TouchableOpacity>
         <Text style={[styles.name, { color: theme.text }]}>
-          Wine Lover
+          {profile?.first_name && profile?.last_name 
+            ? `${profile.first_name} ${profile.last_name}`
+            : 'Wine Lover'
+          }
         </Text>
         <Text style={[styles.email, { color: theme.textSecondary }]}>
           {user.email}
@@ -174,13 +248,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 30,
   },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    marginBottom: 15,
     borderWidth: 3,
     borderColor: WINE_COLORS.light.burgundy,
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   name: {
     fontSize: 24,

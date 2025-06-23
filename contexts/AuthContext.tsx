@@ -7,6 +7,7 @@ export interface Profile {
   first_name: string | null;
   last_name: string | null;
   birth_date: string | null;
+  avatar_url: string | null;
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   isSigningOut: boolean;
   signOut: () => void;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -25,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isSigningOut: false,
   signOut: () => {},
+  refreshProfile: async () => {},
 });
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -95,12 +98,34 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const refreshProfile = async () => {
+    if (!session?.user) return;
+    
+    try {
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error refreshing profile:', error);
+        return;
+      }
+      
+      setProfile(profileData || null);
+    } catch (e) {
+      console.error('Error refreshing profile:', e);
+    }
+  };
+
   const value = {
     session,
     user: session?.user ?? null,
     profile,
     isLoading,
     isSigningOut,
+    refreshProfile,
     signOut: async () => {
       // Set signing out flag and clear state immediately
       setIsSigningOut(true);
