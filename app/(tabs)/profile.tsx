@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -8,14 +8,29 @@ import { ProfileOption } from '@/components/profile/ProfileOption';
 import { router } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
-import { pickImage, uploadAvatar, updateProfileAvatar } from '@/services/imageService';
+import { pickFromGallery, uploadAvatar, updateProfileAvatar } from '@/services/imageService';
 import { FontAwesome } from '@expo/vector-icons';
+import { ImagePickerModal } from '@/components/ImagePickerModal';
+import { CameraModal } from '@/components/CameraModal';
+import { ImageCropModal } from '@/components/ImageCropModal';
 
 export default function ProfileScreen() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = WINE_COLORS[colorScheme];
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
+  const [showCustomCamera, setShowCustomCamera] = useState(false);
+  const [showImageCrop, setShowImageCrop] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const [avatarKey, setAvatarKey] = useState(Date.now()); // Para forzar actualización de imagen
+
+  // Actualizar avatarKey cuando cambie el avatar_url del perfil
+  useEffect(() => {
+    if (profile?.avatar_url) {
+      setAvatarKey(Date.now());
+    }
+  }, [profile?.avatar_url]);
 
   const handleLogout = async () => {
     try {
@@ -31,48 +46,63 @@ export default function ProfileScreen() {
       return;
     }
 
+    setShowImagePicker(true);
+  };
+
+  const handleImageSelected = (imageUri: string) => {
+    setSelectedImageUri(imageUri);
+    setShowImageCrop(true);
+  };
+
+  const handleCropComplete = async (croppedUri: string) => {
+    if (!user) return;
+
     setIsUploadingAvatar(true);
-
     try {
-      // Pick image from camera or gallery
-      const imageResult = await pickImage();
+      console.log('🔄 Iniciando upload de avatar...');
+      const uploadResult = await uploadAvatar(croppedUri, user.id);
+      console.log('📤 Resultado del upload:', uploadResult);
       
-      if (!imageResult.success || !imageResult.imageUri) {
-        setIsUploadingAvatar(false);
-        if (imageResult.error) {
-          Alert.alert('Error', imageResult.error);
+      if (uploadResult.success && uploadResult.url) {
+        console.log('✅ Upload exitoso, actualizando perfil...');
+        const updateSuccess = await updateProfileAvatar(user.id, uploadResult.url);
+        console.log('📝 Resultado actualización perfil:', updateSuccess);
+        
+        if (updateSuccess) {
+          console.log('🔄 Refrescando perfil...');
+          // Pequeño delay para asegurar que la DB se actualizó
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await refreshProfile(); // Refresh the profile to get the new avatar
+          setAvatarKey(Date.now()); // Forzar actualización de la imagen
+          console.log('✨ Avatar actualizado exitosamente');
+          // No mostrar alert para mantener al usuario en la pantalla de perfil
+          // La nueva imagen aparecerá automáticamente
+        } else {
+          Alert.alert('Error', 'No se pudo actualizar la foto de perfil');
         }
-        return;
+      } else {
+        Alert.alert('Error', uploadResult.error || 'No se pudo subir la imagen');
       }
-
-      // Upload image to Supabase Storage
-      const uploadResult = await uploadAvatar(imageResult.imageUri, user.id);
-      
-      if (!uploadResult.success || !uploadResult.url) {
-        Alert.alert('Upload Failed', uploadResult.error || 'Failed to upload image');
-        setIsUploadingAvatar(false);
-        return;
-      }
-
-      // Update profile in database
-      const updateSuccess = await updateProfileAvatar(user.id, uploadResult.url);
-      
-      if (!updateSuccess) {
-        Alert.alert('Update Failed', 'Failed to update profile');
-        setIsUploadingAvatar(false);
-        return;
-      }
-
-      Alert.alert('Success', 'Profile photo updated successfully!');
-      
-      // Refresh the auth context to get updated profile
-      // The profile will be automatically updated when the AuthContext refetches
-      
     } catch (error) {
-      console.error('Error changing avatar:', error);
-      Alert.alert('Error', 'An unexpected error occurred');
+      console.error('Avatar update error:', error);
+      Alert.alert('Error', 'No se pudo actualizar la foto de perfil');
     } finally {
       setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleCameraPress = () => {
+    setShowCustomCamera(true);
+  };
+
+  const handleCustomCameraPhoto = (uri: string) => {
+    handleImageSelected(uri);
+  };
+
+  const handleGalleryPress = async () => {
+    const result = await pickFromGallery();
+    if (result.success && result.imageUri) {
+      handleImageSelected(result.imageUri);
     }
   };
 
@@ -171,9 +201,12 @@ export default function ProfileScreen() {
         >
           <Image
             source={{ 
-              uri: profile?.avatar_url || 'https://www.gravatar.com/avatar/?d=mp' 
+              uri: profile?.avatar_url 
+                ? `${profile.avatar_url}?t=${avatarKey}` 
+                : 'https://www.gravatar.com/avatar/?d=mp' 
             }}
             style={styles.avatar}
+            key={avatarKey}
           />
           {isUploadingAvatar ? (
             <View style={styles.avatarOverlay}>
@@ -231,6 +264,37 @@ export default function ProfileScreen() {
           </Text>
         </TouchableOpacity>
       </Animated.View>
+
+      {/* Image Picker Modal */}
+      <ImagePickerModal
+        visible={showImagePicker}
+        onClose={() => setShowImagePicker(false)}
+        onCamera={handleCameraPress}
+        onGallery={handleGalleryPress}
+      />
+
+      {/* Custom Camera Modal */}
+      <CameraModal
+        visible={showCustomCamera}
+        onClose={() => setShowCustomCamera(false)}
+        onPhotoTaken={handleCustomCameraPhoto}
+      />
+
+      {/* Image Crop Modal */}
+      <ImageCropModal
+        visible={showImageCrop}
+        imageUri={selectedImageUri}
+        onClose={() => {
+          setShowImageCrop(false);
+          setSelectedImageUri(null);
+        }}
+        onCropComplete={handleCropComplete}
+        onRetakePhoto={() => {
+          setShowImageCrop(false);
+          setSelectedImageUri(null);
+          setShowCustomCamera(true);
+        }}
+      />
     </ScrollView>
   );
 }

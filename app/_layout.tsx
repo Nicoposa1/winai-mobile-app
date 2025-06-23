@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, Redirect, useRouter } from 'expo-router';
+import { Stack, Redirect, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -20,6 +20,7 @@ SplashScreen.preventAutoHideAsync();
 function RootLayoutNav() {
   const { session, profile, isLoading, isSigningOut } = useAuth();
   const router = useRouter();
+  const segments = useSegments();
 
   useEffect(() => {
     if (isLoading || isSigningOut) return; // Wait for auth to load or signing out to complete
@@ -37,11 +38,15 @@ function RootLayoutNav() {
         router.replace('/auth/complete-profile');
       } else {
         // User is authenticated and profile is complete
-        router.replace('/(tabs)');
+        // Only navigate to tabs if we're not already in the authenticated area
+        const inAuthenticatedArea = segments[0] === '(tabs)' || segments[0] === 'profile';
+        if (!inAuthenticatedArea) {
+          router.replace('/(tabs)');
+        }
       }
     }
     // If session exists but profile is still null, wait for profile to load
-  }, [isLoading, isSigningOut, session, profile, router]);
+  }, [isLoading, isSigningOut, session, profile, router, segments]);
 
   // Show loading spinner while checking auth or signing out
   if (isLoading || isSigningOut) {

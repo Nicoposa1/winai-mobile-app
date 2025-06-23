@@ -102,6 +102,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (!session?.user) return;
     
     try {
+      console.log('🔄 Refrescando perfil para usuario:', session.user.id);
       const { data: profileData, error } = await supabase
         .from('profiles')
         .select('*')
@@ -113,7 +114,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
       
+      console.log('📋 Datos del perfil obtenidos:', {
+        id: profileData?.id,
+        avatar_url: profileData?.avatar_url,
+        first_name: profileData?.first_name
+      });
       setProfile(profileData || null);
+      console.log('✅ Perfil actualizado en contexto');
     } catch (e) {
       console.error('Error refreshing profile:', e);
     }

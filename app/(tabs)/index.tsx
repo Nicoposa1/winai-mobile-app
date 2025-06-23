@@ -99,8 +99,8 @@ export default function HomeScreen() {
   
   // Handlers
   const handleProfilePress = () => {
-    // Navegar al perfil fuera de los tabs
-    router.push("/profile");
+    // Navegar al perfil dentro de los tabs
+    router.push("/(tabs)/profile");
   };
   
   const handleRecommendationPress = (id: string) => {
@@ -130,9 +130,7 @@ export default function HomeScreen() {
         {/* Cabecera con saludo */}
         <Header
           userName={displayName}
-          avatarUrl={profile?.avatar_url}
           colorScheme={colorScheme}
-          onProfilePress={handleProfilePress}
         />
         
         {/* Sección de recomendaciones */}

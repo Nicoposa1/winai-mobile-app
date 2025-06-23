@@ -167,54 +167,10 @@ export async function requestPermissions(): Promise<boolean> {
   }
 }
 
-// Show action sheet to choose between camera and gallery
-export async function pickImage(): Promise<ImagePickerResult> {
-  try {
-    const hasPermissions = await requestPermissions();
-    if (!hasPermissions) {
-      return {
-        success: false,
-        error: 'Camera and photo library permissions are required'
-      };
-    }
 
-    return new Promise((resolve) => {
-      Alert.alert(
-        'Select Photo',
-        'Choose how you want to select your profile photo',
-        [
-          {
-            text: 'Camera',
-            onPress: async () => {
-              const result = await takePhoto();
-              resolve(result);
-            }
-          },
-          {
-            text: 'Gallery',
-            onPress: async () => {
-              const result = await pickFromGallery();
-              resolve(result);
-            }
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-            onPress: () => resolve({ success: false })
-          }
-        ]
-      );
-    });
-  } catch (error) {
-    return {
-      success: false,
-      error: 'Failed to pick image'
-    };
-  }
-}
 
 // Take photo with camera
-async function takePhoto(): Promise<ImagePickerResult> {
+export async function takePhoto(): Promise<ImagePickerResult> {
   try {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -240,7 +196,7 @@ async function takePhoto(): Promise<ImagePickerResult> {
 }
 
 // Pick from gallery
-async function pickFromGallery(): Promise<ImagePickerResult> {
+export async function pickFromGallery(): Promise<ImagePickerResult> {
   try {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -270,7 +226,26 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<Up
   try {
     // Get file extension
     const fileExtension = imageUri.split('.').pop() || 'jpg';
-    const fileName = `${userId}/avatar.${fileExtension}`;
+    // Add timestamp to filename to avoid caching issues
+    const timestamp = Date.now();
+    const fileName = `${userId}/avatar_${timestamp}.${fileExtension}`;
+
+    // Delete previous avatars for this user to save storage space
+    try {
+      const { data: existingFiles } = await supabase.storage
+        .from('avatars')
+        .list(userId);
+      
+      if (existingFiles && existingFiles.length > 0) {
+        const filesToDelete = existingFiles.map(file => `${userId}/${file.name}`);
+        await supabase.storage
+          .from('avatars')
+          .remove(filesToDelete);
+      }
+    } catch (deleteError) {
+      console.log('Could not delete previous avatars:', deleteError);
+      // Continue with upload even if deletion fails
+    }
 
     // Read file using FileSystem instead of blob.arrayBuffer
     const fileData = await FileSystem.readAsStringAsync(imageUri, {
@@ -285,7 +260,7 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<Up
       .from('avatars')
       .upload(fileName, bytes, {
         contentType: `image/${fileExtension}`,
-        upsert: true // This will replace existing file
+        upsert: false // Don't upsert since we're using unique filenames
       });
 
     if (error) {
