@@ -250,7 +250,7 @@ export default function ProfileScreen() {
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Account</Text>
         <ProfileOption icon="person-outline" label="Edit Profile" onPress={() => router.push('/edit-profile')} colorScheme={colorScheme} delay={500} />
         <ProfileOption icon="notifications-none" label="Notifications" onPress={handleNotificationsPress} colorScheme={colorScheme} delay={600} />
-        <ProfileOption icon="security" label="Security" onPress={() => { }} colorScheme={colorScheme} delay={700} />
+        <ProfileOption icon="security" label="Security" onPress={() => router.push('/security')} colorScheme={colorScheme} delay={700} />
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>General</Text>
         <ProfileOption icon="language" label="Language" onPress={() => { }} colorScheme={colorScheme} delay={800} />
