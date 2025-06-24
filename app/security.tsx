@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { exportUserDataWithWines } from '@/services/dataExportService';
+import { DataExportModal } from '@/components/DataExportModal';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 interface SecurityOption {
@@ -34,6 +35,7 @@ export default function SecurityScreen() {
   const theme = WINE_COLORS[colorScheme];
   const { user } = useAuth();
   const wines = useSelector((state: RootState) => state.wine.wines);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const [securitySettings, setSecuritySettings] = useState<SecurityOption[]>([
     {
@@ -66,7 +68,7 @@ export default function SecurityScreen() {
       subtitle: 'Export all your wine data and preferences',
       icon: 'download',
       type: 'action',
-      onPress: () => handleDataExport(),
+      onPress: () => setShowExportModal(true),
     },
   ]);
 
@@ -98,46 +100,11 @@ export default function SecurityScreen() {
   };
 
   const handleDataExport = async () => {
-    Alert.alert(
-      'Exportar Tus Datos',
-      'Prepararemos un archivo con todos tus datos de vinos, calificaciones y preferencias. Esto puede tomar unos minutos.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Iniciar Exportación',
-          onPress: async () => {
-            try {
-              // Show loading state
-              Alert.alert('Exportando...', 'Preparando tus datos para descarga...');
-              
-              // Export data using imported function
-              const result = await exportUserDataWithWines(wines);
-              
-              if (result.success) {
-                Alert.alert(
-                  'Exportación Completada',
-                  'Tus datos se han exportado exitosamente. El archivo se ha compartido y guardado en tu dispositivo.',
-                  [{ text: 'OK' }]
-                );
-              } else {
-                Alert.alert(
-                  'Error en la Exportación',
-                  result.error || 'No se pudieron exportar los datos. Inténtalo de nuevo.',
-                  [{ text: 'OK' }]
-                );
-              }
-            } catch (error: any) {
-              console.error('Export error:', error);
-              Alert.alert(
-                'Error',
-                'Ocurrió un error al exportar los datos. Inténtalo de nuevo.',
-                [{ text: 'OK' }]
-              );
-            }
-          }
-        }
-      ]
-    );
+    const result = await exportUserDataWithWines(wines);
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Error al exportar los datos');
+    }
   };
 
   const renderSecurityOption = (option: SecurityOption, index: number) => (
@@ -250,6 +217,14 @@ export default function SecurityScreen() {
           </View>
         </Animated.View>
       </ScrollView>
+
+      {/* Data Export Modal */}
+      <DataExportModal
+        visible={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onConfirm={handleDataExport}
+        colorScheme={colorScheme}
+      />
     </SafeAreaView>
   );
 }
