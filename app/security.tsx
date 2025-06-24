@@ -14,6 +14,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { WINE_COLORS } from '@/components/wine/WineColors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+import { exportUserDataWithWines } from '@/services/dataExportService';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 interface SecurityOption {
@@ -30,6 +33,7 @@ export default function SecurityScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = WINE_COLORS[colorScheme];
   const { user } = useAuth();
+  const wines = useSelector((state: RootState) => state.wine.wines);
 
   const [securitySettings, setSecuritySettings] = useState<SecurityOption[]>([
     {
@@ -48,14 +52,14 @@ export default function SecurityScreen() {
       type: 'action',
       onPress: () => handleChangePassword(),
     },
-    {
-      id: 'privacy_settings',
-      title: 'Privacy Settings',
-      subtitle: 'Control who can see your wine collection',
-      icon: 'eye-off',
-      type: 'action',
-      onPress: () => handlePrivacySettings(),
-    },
+    // {
+    //   id: 'privacy_settings',
+    //   title: 'Privacy Settings',
+    //   subtitle: 'Control who can see your wine collection',
+    //   icon: 'eye-off',
+    //   type: 'action',
+    //   onPress: () => handlePrivacySettings(),
+    // },
     {
       id: 'data_export',
       title: 'Download Your Data',
@@ -93,16 +97,43 @@ export default function SecurityScreen() {
     );
   };
 
-  const handleDataExport = () => {
+  const handleDataExport = async () => {
     Alert.alert(
-      'Download Your Data',
-      'We will prepare a file with all your wine data, ratings, and preferences. This may take a few minutes.',
+      'Exportar Tus Datos',
+      'Prepararemos un archivo con todos tus datos de vinos, calificaciones y preferencias. Esto puede tomar unos minutos.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Start Export',
-          onPress: () => {
-            Alert.alert('Export Started', 'You will receive an email when your data is ready for download.');
+          text: 'Iniciar Exportación',
+          onPress: async () => {
+            try {
+              // Show loading state
+              Alert.alert('Exportando...', 'Preparando tus datos para descarga...');
+              
+              // Export data using imported function
+              const result = await exportUserDataWithWines(wines);
+              
+              if (result.success) {
+                Alert.alert(
+                  'Exportación Completada',
+                  'Tus datos se han exportado exitosamente. El archivo se ha compartido y guardado en tu dispositivo.',
+                  [{ text: 'OK' }]
+                );
+              } else {
+                Alert.alert(
+                  'Error en la Exportación',
+                  result.error || 'No se pudieron exportar los datos. Inténtalo de nuevo.',
+                  [{ text: 'OK' }]
+                );
+              }
+            } catch (error: any) {
+              console.error('Export error:', error);
+              Alert.alert(
+                'Error',
+                'Ocurrió un error al exportar los datos. Inténtalo de nuevo.',
+                [{ text: 'OK' }]
+              );
+            }
           }
         }
       ]
