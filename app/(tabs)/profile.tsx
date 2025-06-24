@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -13,6 +13,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { ImagePickerModal } from '@/components/ImagePickerModal';
 import { CameraModal } from '@/components/CameraModal';
 import { ImageCropModal } from '@/components/ImageCropModal';
+import { NotificationsBottomSheet } from '@/components/NotificationsBottomSheet';
 
 export default function ProfileScreen() {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -24,6 +25,7 @@ export default function ProfileScreen() {
   const [showImageCrop, setShowImageCrop] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [avatarKey, setAvatarKey] = useState(Date.now()); // Para forzar actualización de imagen
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Actualizar avatarKey cuando cambie el avatar_url del perfil
   useEffect(() => {
@@ -104,6 +106,15 @@ export default function ProfileScreen() {
     if (result.success && result.imageUri) {
       handleImageSelected(result.imageUri);
     }
+  };
+
+  const handleNotificationsPress = () => {
+    setShowNotifications(true);
+  };
+
+  const handleNotificationsSave = (settings: any) => {
+    console.log('Notification settings saved:', settings);
+    // Aquí puedes guardar las configuraciones en AsyncStorage o en tu backend
   };
 
   const handleDeleteAccount = () => {
@@ -237,8 +248,8 @@ export default function ProfileScreen() {
 
       <Animated.View style={styles.optionsContainer} entering={FadeInDown.delay(400).duration(400)}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Account</Text>
-        <ProfileOption icon="person-outline" label="Edit Profile" onPress={() => { }} colorScheme={colorScheme} delay={500} />
-        <ProfileOption icon="notifications-none" label="Notifications" onPress={() => { }} colorScheme={colorScheme} delay={600} />
+        <ProfileOption icon="person-outline" label="Edit Profile" onPress={() => router.push('/edit-profile')} colorScheme={colorScheme} delay={500} />
+        <ProfileOption icon="notifications-none" label="Notifications" onPress={handleNotificationsPress} colorScheme={colorScheme} delay={600} />
         <ProfileOption icon="security" label="Security" onPress={() => { }} colorScheme={colorScheme} delay={700} />
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>General</Text>
@@ -294,6 +305,13 @@ export default function ProfileScreen() {
           setSelectedImageUri(null);
           setShowCustomCamera(true);
         }}
+      />
+
+      {/* Notifications Bottom Sheet */}
+      <NotificationsBottomSheet
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        onSave={handleNotificationsSave}
       />
     </ScrollView>
   );

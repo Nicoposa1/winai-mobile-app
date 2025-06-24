@@ -191,24 +191,42 @@ export function AuthProvider({ children }: PropsWithChildren) {
           console.log('✅ Profile created successfully:', createdProfile);
           setProfile(createdProfile);
         }
-      } else if (error) {
-        console.error('❌ Error fetching profile:', error);
-        // Fallback: create empty profile for navigation
-        console.log('🔄 Creating fallback profile due to error');
-        setProfile({ id: user.id, first_name: null, last_name: null, birth_date: null, avatar_url: null });
+              } else if (error) {
+          console.error('❌ Error fetching profile:', error);
+          // Fallback: create smart profile for navigation
+          console.log('🔄 Creating smart fallback profile due to error');
+          
+          const fullName = user.user_metadata?.full_name || '';
+          const nameParts = fullName.split(' ');
+          const firstName = nameParts[0] || null;
+          const lastName = nameParts.slice(1).join(' ') || null;
+          
+          setProfile({ 
+            id: user.id, 
+            first_name: firstName, 
+            last_name: lastName, 
+            birth_date: null, 
+            avatar_url: user.user_metadata?.avatar_url || null 
+          });
       } else {
         console.log('✅ Existing profile found:', profileData);
         setProfile(profileData);
       }
     } catch (e) {
-      console.error('❌ Exception in handleProfileForUser:', e);
+      console.log('❌ Exception in handleProfileForUser:', e);
       
-      // If it's a timeout or any other error, create a fallback profile
-      console.log('🔄 Creating fallback profile due to exception:', (e as Error).message);
+      // If it's a timeout or any other error, create a smart fallback profile
+      console.log('🔄 Creating smart fallback profile due to exception:', (e as Error).message);
+      
+      const fullName = user.user_metadata?.full_name || '';
+      const nameParts = fullName.split(' ');
+      const firstName = nameParts[0] || null;
+      const lastName = nameParts.slice(1).join(' ') || null;
+      
       setProfile({ 
         id: user.id, 
-        first_name: null, 
-        last_name: null, 
+        first_name: firstName, 
+        last_name: lastName, 
         birth_date: null, 
         avatar_url: user.user_metadata?.avatar_url || null 
       });
@@ -279,19 +297,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
             if (data.session?.user) {
               console.log('🔄 Manually checking/creating profile after OAuth');
               
-              // Create fallback profile immediately for fast navigation
-              const fallbackProfile = {
+              // Extract names from Google metadata
+              const fullName = data.session.user.user_metadata?.full_name || '';
+              const nameParts = fullName.split(' ');
+              const firstName = nameParts[0] || null;
+              const lastName = nameParts.slice(1).join(' ') || null;
+              
+              // Create smart fallback profile using Google data
+              const smartProfile = {
                 id: data.session.user.id,
-                first_name: null,
-                last_name: null,
+                first_name: firstName,
+                last_name: lastName,
                 birth_date: null,
                 avatar_url: data.session.user.user_metadata?.avatar_url || null,
               };
               
-              console.log('⚡ Setting fallback profile for fast navigation');
-              setProfile(fallbackProfile);
+              console.log('⚡ Setting smart profile from Google data:', { firstName, lastName });
+              setProfile(smartProfile);
               
-              // Try to fetch the real profile in background
+              // Try to fetch the real profile in background to update any missing fields
               setTimeout(() => {
                 if (data.session?.user) {
                   handleProfileForUser(data.session.user).catch(console.error);

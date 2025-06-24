@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { ActivityIndicator, Text, View, TouchableOpacity } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
@@ -54,7 +55,7 @@ function RootLayoutNav() {
         // User is authenticated and profile is complete
         console.log('📍 Profile complete, checking if should navigate to tabs');
         // Only navigate to tabs if we're not already in the authenticated area
-        const inAuthenticatedArea = segments[0] === '(tabs)' || segments[0] === 'profile';
+        const inAuthenticatedArea = segments[0] === '(tabs)' || segments[0] === 'profile' || segments[0] === 'edit-profile';
         if (!inAuthenticatedArea) {
           console.log('📍 Not in authenticated area, navigating to tabs');
           router.replace('/(tabs)');
@@ -82,6 +83,7 @@ function RootLayoutNav() {
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="auth" options={{ headerShown: false }} />
+      <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );
@@ -108,13 +110,15 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <ReduxProvider>
-        <AuthProvider>
-          <RootLayoutNav />
-          <StatusBar style="auto" />
-        </AuthProvider>
-      </ReduxProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <ReduxProvider>
+          <AuthProvider>
+            <RootLayoutNav />
+            <StatusBar style="auto" />
+          </AuthProvider>
+        </ReduxProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
