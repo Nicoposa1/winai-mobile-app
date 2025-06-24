@@ -18,6 +18,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { exportUserDataWithWines } from '@/services/dataExportService';
 import { DataExportModal } from '@/components/DataExportModal';
+import { BiometricModal } from '@/components/BiometricModal';
+import { BiometricService } from '@/services/biometricService';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 interface SecurityOption {
@@ -36,6 +38,22 @@ export default function SecurityScreen() {
   const { user } = useAuth();
   const wines = useSelector((state: RootState) => state.wine.wines);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showBiometricModal, setShowBiometricModal] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+
+  // Load biometric status on component mount
+  React.useEffect(() => {
+    const loadBiometricStatus = async () => {
+      try {
+        const isEnabled = await BiometricService.isBiometricEnabled();
+        setBiometricEnabled(isEnabled);
+      } catch (error) {
+        console.error('Error loading biometric status:', error);
+      }
+    };
+
+    loadBiometricStatus();
+  }, []);
 
   const [securitySettings, setSecuritySettings] = useState<SecurityOption[]>([
     {
@@ -44,7 +62,7 @@ export default function SecurityScreen() {
       subtitle: 'Use fingerprint or face recognition to log in',
       icon: 'finger-print',
       type: 'toggle',
-      enabled: false,
+      enabled: biometricEnabled,
     },
     {
       id: 'change_password',
@@ -73,6 +91,11 @@ export default function SecurityScreen() {
   ]);
 
   const toggleSetting = (id: string) => {
+    if (id === 'biometric') {
+      setShowBiometricModal(true);
+      return;
+    }
+
     setSecuritySettings(prev =>
       prev.map(setting =>
         setting.id === id && setting.type === 'toggle'
@@ -105,6 +128,19 @@ export default function SecurityScreen() {
     if (!result.success) {
       throw new Error(result.error || 'Error al exportar los datos');
     }
+  };
+
+  const handleBiometricToggle = (enabled: boolean) => {
+    setBiometricEnabled(enabled);
+    
+    // Update the security settings state
+    setSecuritySettings(prev =>
+      prev.map(setting =>
+        setting.id === 'biometric'
+          ? { ...setting, enabled }
+          : setting
+      )
+    );
   };
 
   const renderSecurityOption = (option: SecurityOption, index: number) => (
@@ -223,6 +259,16 @@ export default function SecurityScreen() {
         visible={showExportModal}
         onClose={() => setShowExportModal(false)}
         onConfirm={handleDataExport}
+        colorScheme={colorScheme}
+      />
+
+      {/* Biometric Modal */}
+      <BiometricModal
+        visible={showBiometricModal}
+        onClose={() => setShowBiometricModal(false)}
+        onToggle={handleBiometricToggle}
+        isEnabled={biometricEnabled}
+        userEmail={user?.email || ''}
         colorScheme={colorScheme}
       />
     </SafeAreaView>

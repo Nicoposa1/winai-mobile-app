@@ -112,7 +112,7 @@ export function DataExportModal({ visible, onClose, onConfirm, colorScheme }: Da
       {/* Actions */}
       <View style={styles.actions}>
         <TouchableOpacity 
-          style={[styles.cancelButton, { borderColor: theme.border }]}
+          style={[styles.cancelButton, { borderColor: theme.border, justifyContent: 'center', alignItems: 'center' }]}
           onPress={handleClose}
         >
           <Text style={[styles.cancelText, { color: theme.textSecondary }]}>
