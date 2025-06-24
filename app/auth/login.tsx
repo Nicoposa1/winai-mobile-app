@@ -32,11 +32,32 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, session, profile } = useAuth();
   const [formError, setFormError] = useState<{ email: string | null; password: string | null }>({
     email: null,
     password: null,
   });
+
+  // Reset loading states only when session AND profile are ready (navigation completed)
+  React.useEffect(() => {
+    if (session && profile) {
+      console.log('🔄 Session and profile ready, resetting loading states');
+      setIsGoogleLoading(false);
+      setIsLoading(false);
+    }
+  }, [session, profile]);
+
+  // Safety timeout to reset loading state if it gets stuck
+  React.useEffect(() => {
+    if (isGoogleLoading) {
+      const timeout = setTimeout(() => {
+        console.log('⏰ Google loading timeout, resetting state');
+        setIsGoogleLoading(false);
+      }, 15000); // 15 seconds timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isGoogleLoading]);
 
   const handleForgotPassword = async () => {
     if (!email) {
@@ -87,15 +108,16 @@ export default function LoginScreen() {
     try {
       const result = await signInWithGoogle();
       if (result.success) {
-        // Para OAuth, no redirigimos aquí porque el navegador se abre
-        // El callback manejará la redirección final
-        console.log('✅ Google OAuth iniciado correctamente');
+        console.log('✅ Google OAuth completado exitosamente');
+        // La navegación será manejada por RootLayoutNav cuando detecte la nueva sesión
+        // No establecemos setIsGoogleLoading(false) aquí porque queremos mantener el loading
+        // hasta que RootLayoutNav navegue a la página correcta
       } else {
         Alert.alert('Google Sign-In Failed', result.error || 'An error occurred during Google sign-in');
+        setIsGoogleLoading(false);
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred');
-    } finally {
       setIsGoogleLoading(false);
     }
   };

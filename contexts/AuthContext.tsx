@@ -75,22 +75,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       
       // If session exists, fetch the profile
       if (session?.user) {
-        try {
-          const { data: profileData, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (error && error.code !== 'PGRST116') { // PGRST116 = row not found
-            console.error('Error fetching profile:', error);
-          }
-          
-          setProfile(profileData || null);
-        } catch (e) {
-          console.error('Error fetching profile:', e);
-          setProfile(null);
-        }
+        console.log('🔄 Handling profile on initial load');
+        await handleProfileForUser(session.user);
       } else {
         setProfile(null);
       }
@@ -109,22 +95,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
       
       // If user logs in, fetch their profile
-      try {
-        const { data: profileData, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error fetching profile on auth change:', error);
-        }
-        
-        setProfile(profileData || null);
-      } catch (e) {
-        console.error('Error fetching profile on auth change:', e);
-        setProfile(null);
-      }
+      console.log('🔄 Handling profile on auth state change');
+      await handleProfileForUser(session.user);
     });
 
     return () => subscription.unsubscribe();
@@ -156,6 +128,92 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } catch (e) {
       console.error('Error refreshing profile:', e);
     }
+  };
+
+  const handleProfileForUser = async (user: User) => {
+    console.log('🧪 handleProfileForUser called with user ID:', user.id);
+    
+    // Create a timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Profile query timeout')), 3000); // 3 second timeout
+    });
+    
+    try {
+      console.log('🔍 Searching for existing profile...');
+      
+      // Race between the actual query and timeout
+      const profileQueryPromise = supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      const { data: profileData, error } = await Promise.race([
+        profileQueryPromise,
+        timeoutPromise
+      ]) as any;
+      
+      console.log('🔍 Profile search result:', { profileData, error: error?.message, errorCode: error?.code });
+      
+      if (error && error.code === 'PGRST116') {
+        // Profile doesn't exist, create it for new OAuth users
+        console.log('🆕 Creating new profile for OAuth user:', user.id);
+        console.log('🆕 User metadata:', user.user_metadata);
+        
+        const newProfile = {
+          id: user.id,
+          first_name: null,
+          last_name: null,
+          birth_date: null,
+          avatar_url: user.user_metadata?.avatar_url || null,
+        };
+        
+        console.log('🆕 Profile to insert:', newProfile);
+        
+        const insertPromise = supabase
+          .from('profiles')
+          .insert(newProfile)
+          .select()
+          .single();
+        
+        const { data: createdProfile, error: createError } = await Promise.race([
+          insertPromise,
+          timeoutPromise
+        ]) as any;
+        
+        console.log('🆕 Insert result:', { createdProfile, createError: createError?.message });
+        
+        if (createError) {
+          console.error('❌ Error creating profile:', createError);
+          // Fallback: create empty profile for navigation
+          setProfile({ id: user.id, first_name: null, last_name: null, birth_date: null, avatar_url: null });
+        } else {
+          console.log('✅ Profile created successfully:', createdProfile);
+          setProfile(createdProfile);
+        }
+      } else if (error) {
+        console.error('❌ Error fetching profile:', error);
+        // Fallback: create empty profile for navigation
+        console.log('🔄 Creating fallback profile due to error');
+        setProfile({ id: user.id, first_name: null, last_name: null, birth_date: null, avatar_url: null });
+      } else {
+        console.log('✅ Existing profile found:', profileData);
+        setProfile(profileData);
+      }
+    } catch (e) {
+      console.error('❌ Exception in handleProfileForUser:', e);
+      
+      // If it's a timeout or any other error, create a fallback profile
+      console.log('🔄 Creating fallback profile due to exception:', (e as Error).message);
+      setProfile({ 
+        id: user.id, 
+        first_name: null, 
+        last_name: null, 
+        birth_date: null, 
+        avatar_url: user.user_metadata?.avatar_url || null 
+      });
+    }
+    console.log('🧪 handleProfileForUser completed');
   };
 
   const signInWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
@@ -215,6 +273,36 @@ export function AuthProvider({ children }: PropsWithChildren) {
             }
 
             console.log('✅ Session established successfully');
+            console.log('✅ Session data:', data.session);
+            
+            // Manually trigger profile fetch/creation since onAuthStateChange might not fire
+            if (data.session?.user) {
+              console.log('🔄 Manually checking/creating profile after OAuth');
+              
+              // Create fallback profile immediately for fast navigation
+              const fallbackProfile = {
+                id: data.session.user.id,
+                first_name: null,
+                last_name: null,
+                birth_date: null,
+                avatar_url: data.session.user.user_metadata?.avatar_url || null,
+              };
+              
+              console.log('⚡ Setting fallback profile for fast navigation');
+              setProfile(fallbackProfile);
+              
+              // Try to fetch the real profile in background
+              setTimeout(() => {
+                if (data.session?.user) {
+                  handleProfileForUser(data.session.user).catch(console.error);
+                }
+              }, 100);
+              
+              console.log('🔄 Profile handling completed, returning success');
+            } else {
+              console.log('❌ No user in session data');
+            }
+            
             return { success: true };
           } else {
             console.error('❌ Missing tokens in OAuth response');

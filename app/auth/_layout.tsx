@@ -25,6 +25,24 @@ export default function AuthLayout() {
           title: 'Register',
         }}
       />
+      <Stack.Screen
+        name="callback"
+        options={{
+          title: 'Authenticating',
+        }}
+      />
+      <Stack.Screen
+        name="complete-profile"
+        options={{
+          title: 'Complete Profile',
+        }}
+      />
+      <Stack.Screen
+        name="update-password"
+        options={{
+          title: 'Update Password',
+        }}
+      />
     </Stack>
   );
 } 
