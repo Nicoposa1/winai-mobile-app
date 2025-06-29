@@ -253,7 +253,16 @@ export default function ProfileScreen() {
         <ProfileOption icon="security" label="Security" onPress={() => router.push('/security')} colorScheme={colorScheme} delay={700} />
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>General</Text>
-        <ProfileOption icon="language" label="Language" onPress={() => { }} colorScheme={colorScheme} delay={800} />
+        <ProfileOption icon="language" label="Idioma" onPress={() => {
+          console.log('🔍 Navigating to Language...');
+          try {
+            router.push('/language');
+            console.log('✅ Navigated to Language');
+          } catch (error) {
+            console.error('❌ Navigation error:', error);
+            Alert.alert('Error', 'Unable to open Language settings. Please try again.');
+          }
+        }} colorScheme={colorScheme} delay={800} />
         <ProfileOption icon="help-outline" label="Help & Support" onPress={() => {
           console.log('🔍 Navigating to Help & Support...');
           try {

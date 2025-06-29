@@ -9,6 +9,7 @@ import { FormInput } from '../../components/FormInput';
 import { Button } from '../../components/Button';
 import { Colors } from '../../constants/Colors';
 import { useColorScheme } from '../../hooks/useColorScheme';
+import { useI18n } from '../../hooks/useI18n';
 
 export default function CompleteProfileScreen() {
   const { user, refreshProfile } = useAuth();
@@ -24,6 +25,7 @@ export default function CompleteProfileScreen() {
   const [showErrors, setShowErrors] = useState(false);
   const router = useRouter();
   const colorScheme = useColorScheme();
+  const { t } = useI18n();
 
   const validateDate = (dateString: string) => {
     if (!dateString || dateString.length !== 10) return false;
@@ -41,21 +43,21 @@ export default function CompleteProfileScreen() {
   };
 
   const validateFirstName = (name: string) => {
-    if (!name.trim()) return 'First name is required';
+    if (!name.trim()) return t('auth.completeProfile.errors.firstNameRequired');
     if (name.trim().length < 2) return 'First name must be at least 2 characters';
     return '';
   };
 
   const validateLastName = (name: string) => {
-    if (!name.trim()) return 'Last name is required';
+    if (!name.trim()) return t('auth.completeProfile.errors.lastNameRequired');
     if (name.trim().length < 2) return 'Last name must be at least 2 characters';
     return '';
   };
 
   const validateBirthDate = (dateString: string) => {
-    if (!dateString) return 'Birth date is required';
-    if (dateString.length !== 10) return 'Please enter complete date (DD/MM/YYYY)';
-    if (!validateDate(dateString)) return 'Please enter a valid birth date';
+    if (!dateString) return t('auth.completeProfile.errors.birthDateRequired');
+    if (dateString.length !== 10) return t('auth.completeProfile.errors.birthDateIncomplete');
+    if (!validateDate(dateString)) return t('auth.completeProfile.errors.birthDateInvalid');
     return '';
   };
 
@@ -119,12 +121,12 @@ export default function CompleteProfileScreen() {
     });
 
     if (firstNameError || lastNameError || birthDateError) {
-      Alert.alert('Please fix the errors', 'Check all fields and try again.');
+      Alert.alert(t('common.error'), t('auth.completeProfile.errors.checkFields'));
       return;
     }
 
     if (!user) {
-      Alert.alert('Error', 'User not found. Please log in again.');
+      Alert.alert(t('common.error'), t('auth.completeProfile.errors.userNotFound'));
       router.replace('/auth/login');
       return;
     }
@@ -156,7 +158,7 @@ export default function CompleteProfileScreen() {
 
     if (error) {
       console.error('❌ Update error:', error);
-      Alert.alert('Error', error.message);
+      Alert.alert(t('common.error'), error.message);
       setLoading(false);
     } else {
       console.log('✅ Profile updated successfully:', data);
@@ -181,18 +183,18 @@ export default function CompleteProfileScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: textColor }]}>Complete Your Profile</Text>
+          <Text style={[styles.title, { color: textColor }]}>{t('auth.completeProfile.title')}</Text>
           <Text style={[styles.subtitle, { color: isDark ? Colors.dark.tabIconDefault : Colors.light.tabIconDefault }]}>
-            Let's get to know you a little better.
+            {t('auth.completeProfile.subtitle')}
           </Text>
         </View>
 
         <View style={styles.form}>
           <FormInput
-            label="First Name"
+            label={t('auth.completeProfile.firstName')}
             value={firstName}
             onChangeText={handleFirstNameChange}
-            placeholder="Enter your first name"
+            placeholder={t('auth.completeProfile.firstName')}
             textContentType="name"
             autoComplete="name-given"
             autoCapitalize="words"
@@ -204,10 +206,10 @@ export default function CompleteProfileScreen() {
           />
 
           <FormInput
-            label="Last Name"
+            label={t('auth.completeProfile.lastName')}
             value={lastName}
             onChangeText={handleLastNameChange}
-            placeholder="Enter your last name"
+            placeholder={t('auth.completeProfile.lastName')}
             textContentType="familyName"
             autoComplete="name-family"
             autoCapitalize="words"
@@ -219,12 +221,12 @@ export default function CompleteProfileScreen() {
           />
 
           <View style={styles.dateInputContainer}>
-            <Text style={[styles.dateLabel, { color: textColor }]}>Birth Date</Text>
+            <Text style={[styles.dateLabel, { color: textColor }]}>{t('auth.completeProfile.birthDate')}</Text>
             <MaskInput
               value={birthDate}
               onChangeText={handleBirthDateChange}
               mask={[/\d/, /\d/, '/', /\d/, /\d/, '/', /\d/, /\d/, /\d/, /\d/]}
-              placeholder="DD/MM/YYYY"
+              placeholder={t('auth.completeProfile.birthDatePlaceholder')}
               style={[
                 styles.dateInput,
                 isDark ? styles.dateInputDark : styles.dateInputLight,
@@ -241,7 +243,7 @@ export default function CompleteProfileScreen() {
 
         <View style={styles.buttonContainer}>
           <Button
-            title={loading ? 'Saving...' : 'Save and Continue'}
+            title={loading ? t('auth.completeProfile.saving') : t('auth.completeProfile.saveAndContinue')}
             onPress={handleCompleteProfile}
             disabled={loading || !isFormValid()}
             color={Colors.dark.wineRed}

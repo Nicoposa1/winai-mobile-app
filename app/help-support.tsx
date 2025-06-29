@@ -74,19 +74,22 @@ export default function HelpSupportScreen() {
 
   const handleEmailSupport = async () => {
     const email = 'support@winai.app';
-    const subject = 'WinAI Support Request';
-    const body = `
-Hi WinAI Support Team,
+    const subject = 'Solicitud de Soporte - WinAI';
+    const body = `Hola equipo de soporte de WinAI,
 
-I need help with:
-[Please describe your issue here]
+Necesito ayuda con la aplicación. Mi consulta es la siguiente:
 
-App Version: ${appVersion} (${buildNumber})
-Platform: ${Platform.OS} ${Platform.Version}
-Device: ${Platform.OS === 'ios' ? 'iOS Device' : 'Android Device'}
+[Por favor describe tu problema o pregunta aquí]
 
-Thank you!
-    `;
+Información técnica:
+- Versión de la app: ${appVersion} (${buildNumber})
+- Plataforma: ${Platform.OS} ${Platform.Version}
+- Dispositivo: ${Platform.OS === 'ios' ? 'iOS Device' : 'Android Device'}
+
+Muchas gracias por su ayuda.
+
+Saludos,
+[Tu nombre]`;
 
     const emailUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
@@ -96,42 +99,17 @@ Thank you!
         await Linking.openURL(emailUrl);
       } else {
         Alert.alert(
-          'Email Support',
-          `Please send an email to: ${email}`,
+          'Soporte por Email',
+          `Por favor envía un email a: ${email}`,
           [
-            { text: 'Copy Email', onPress: () => Linking.openURL(`mailto:${email}`) },
+            { text: 'Copiar Email', onPress: () => Linking.openURL(`mailto:${email}`) },
             { text: 'OK' }
           ]
         );
       }
     } catch (error) {
-      Alert.alert('Error', 'Unable to open email client. Please email us at support@winai.app');
+      Alert.alert('Error', 'No se pudo abrir el cliente de email. Por favor envía un email a support@winai.app');
     }
-  };
-
-  const handleLiveChatSupport = () => {
-    Alert.alert(
-      'Live Chat Support',
-      'Our live chat support is available Monday-Friday, 9 AM - 6 PM EST. Would you like to start a conversation?',
-      [
-        { text: 'Not Now', style: 'cancel' },
-        { 
-          text: 'Start Chat', 
-          onPress: () => {
-            // In a real app, this would open your chat system (Intercom, Zendesk, etc.)
-            Alert.alert('Coming Soon', 'Live chat support will be available in the next update!');
-          }
-        }
-      ]
-    );
-  };
-
-  const handleFAQ = () => {
-    Alert.alert(
-      'Frequently Asked Questions',
-      'This feature is coming soon! For now, please contact support for any questions.',
-      [{ text: 'OK' }]
-    );
   };
 
   const handlePrivacyPolicy = async () => {
@@ -141,10 +119,10 @@ Thank you!
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        Alert.alert('Error', 'Unable to open Privacy Policy. Please visit winai.app/privacy-policy');
+        Alert.alert('Error', 'No se pudo abrir la Política de Privacidad. Por favor visita winai.app/privacy-policy');
       }
     } catch (error) {
-      Alert.alert('Error', 'Unable to open Privacy Policy. Please visit winai.app/privacy-policy');
+      Alert.alert('Error', 'No se pudo abrir la Política de Privacidad. Por favor visita winai.app/privacy-policy');
     }
   };
 
@@ -155,73 +133,102 @@ Thank you!
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        Alert.alert('Error', 'Unable to open Terms of Service. Please visit winai.app/terms-of-service');
+        Alert.alert('Error', 'No se pudo abrir los Términos de Servicio. Por favor visita winai.app/terms-of-service');
       }
     } catch (error) {
-      Alert.alert('Error', 'Unable to open Terms of Service. Please visit winai.app/terms-of-service');
+      Alert.alert('Error', 'No se pudo abrir los Términos de Servicio. Por favor visita winai.app/terms-of-service');
     }
   };
 
   const handleAboutApp = () => {
     Alert.alert(
-      'About WinAI',
-      `Version: ${appVersion} (${buildNumber})\n\nWinAI is your intelligent wine companion, helping you discover, rate, and manage your wine collection with the power of AI.\n\nDeveloped with ❤️ for wine enthusiasts everywhere.`,
+      'Acerca de WinAI',
+      `Versión: ${appVersion} (${buildNumber})\n\nWinAI es tu compañero inteligente de vinos, te ayuda a descubrir, calificar y gestionar tu colección de vinos con el poder de la IA.\n\nDesarrollado con ❤️ para los amantes del vino en todas partes.`,
       [{ text: 'OK' }]
     );
   };
 
   const handleReportBug = async () => {
-    const email = 'bugs@winai.app';
-    const subject = 'Bug Report - WinAI';
-    const body = `
-Bug Report:
+    const email = 'support@winai.app';
+    const subject = 'Reporte de Error - WinAI';
+    const body = `Hola equipo de WinAI,
 
-Steps to reproduce:
-1. 
-2. 
-3. 
+He encontrado un error en la aplicación y me gustaría reportarlo:
 
-Expected behavior:
+DESCRIPCIÓN DEL ERROR:
+[Describe brevemente qué error encontraste]
 
+PASOS PARA REPRODUCIR EL ERROR:
+1. [Primer paso que realizaste]
+2. [Segundo paso]
+3. [Tercer paso, etc.]
 
-Actual behavior:
+COMPORTAMIENTO ESPERADO:
+[Qué esperabas que pasara]
 
+COMPORTAMIENTO ACTUAL:
+[Qué pasó realmente]
 
-App Version: ${appVersion} (${buildNumber})
-Platform: ${Platform.OS} ${Platform.Version}
-    `;
+INFORMACIÓN ADICIONAL:
+[Cualquier detalle adicional que pueda ser útil]
+
+Información técnica:
+- Versión de la app: ${appVersion} (${buildNumber})
+- Plataforma: ${Platform.OS} ${Platform.Version}
+- Dispositivo: ${Platform.OS === 'ios' ? 'iOS Device' : 'Android Device'}
+
+Gracias por su tiempo y por mejorar la aplicación.
+
+Saludos,
+[Tu nombre]`;
 
     const emailUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
     try {
       await Linking.openURL(emailUrl);
     } catch (error) {
-      Alert.alert('Error', 'Unable to open email client. Please email us at bugs@winai.app');
+      Alert.alert('Error', 'No se pudo abrir el cliente de email. Por favor envía un email a support@winai.app');
     }
   };
 
   const handleFeatureRequest = async () => {
-    const email = 'features@winai.app';
-    const subject = 'Feature Request - WinAI';
-    const body = `
-Feature Request:
+    const email = 'support@winai.app';
+    const subject = 'Solicitud de Nueva Funcionalidad - WinAI';
+    const body = `Hola equipo de desarrollo de WinAI,
 
-Feature description:
+Me gustaría sugerir una nueva funcionalidad para la aplicación:
 
+FUNCIONALIDAD SOLICITADA:
+[Describe la funcionalidad que te gustaría ver en la app]
 
-Why this feature would be helpful:
+DESCRIPCIÓN DETALLADA:
+[Explica cómo funcionaría esta funcionalidad]
 
+¿POR QUÉ SERÍA ÚTIL?
+[Explica por qué esta funcionalidad mejoraría la experiencia de usuario]
 
-App Version: ${appVersion} (${buildNumber})
-Platform: ${Platform.OS} ${Platform.Version}
-    `;
+CASOS DE USO:
+[Describe cuándo y cómo utilizarías esta funcionalidad]
+
+EJEMPLOS O REFERENCIAS:
+[Si conoces otras apps que tengan algo similar, menciónalas]
+
+Información técnica:
+- Versión de la app: ${appVersion} (${buildNumber})
+- Plataforma: ${Platform.OS} ${Platform.Version}
+- Dispositivo: ${Platform.OS === 'ios' ? 'iOS Device' : 'Android Device'}
+
+Muchas gracias por considerar mi sugerencia.
+
+Saludos,
+[Tu nombre]`;
 
     const emailUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
     try {
       await Linking.openURL(emailUrl);
     } catch (error) {
-      Alert.alert('Error', 'Unable to open email client. Please email us at features@winai.app');
+      Alert.alert('Error', 'No se pudo abrir el cliente de email. Por favor envía un email a support@winai.app');
     }
   };
 
@@ -236,10 +243,10 @@ Platform: ${Platform.OS} ${Platform.Version}
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        Alert.alert('Error', 'Unable to open app store');
+        Alert.alert('Error', 'No se pudo abrir la tienda de aplicaciones');
       }
     } catch (error) {
-      Alert.alert('Error', 'Unable to open app store');
+      Alert.alert('Error', 'No se pudo abrir la tienda de aplicaciones');
     }
   };
 
@@ -247,12 +254,12 @@ Platform: ${Platform.OS} ${Platform.Version}
     try {
       const result = await Share.share({
         message: Platform.OS === 'ios' 
-          ? 'Check out WinAI - the intelligent wine companion app! https://apps.apple.com/app/winai'
-          : 'Check out WinAI - the intelligent wine companion app! https://play.google.com/store/apps/details?id=com.winai.app',
-        title: 'WinAI - Wine Companion App',
+          ? '¡Mira WinAI - la aplicación inteligente para amantes del vino! https://apps.apple.com/app/winai'
+          : '¡Mira WinAI - la aplicación inteligente para amantes del vino! https://play.google.com/store/apps/details?id=com.winai.app',
+        title: 'WinAI - Aplicación Compañera de Vinos',
       });
     } catch (error) {
-      Alert.alert('Error', 'Unable to share app');
+      Alert.alert('Error', 'No se pudo compartir la aplicación');
     }
   };
 
@@ -266,7 +273,7 @@ Platform: ${Platform.OS} ${Platform.Version}
         >
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Help & Support</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Ayuda y Soporte</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -276,117 +283,99 @@ Platform: ${Platform.OS} ${Platform.Version}
         showsVerticalScrollIndicator={false}
       >
         {/* Support Section */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Get Help</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Obtener Ayuda</Text>
         
         <SupportOption
           icon="mail-outline"
-          title="Email Support"
-          description="Get personalized help via email"
+          title="Soporte por Email"
+          description="Obtén ayuda personalizada vía email"
           onPress={handleEmailSupport}
           colorScheme={colorScheme}
           delay={100}
         />
 
+        {/* Legal Section */}
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Legal y Privacidad</Text>
+
         <SupportOption
-          icon="chatbubble-outline"
-          title="Live Chat"
-          description="Chat with our support team"
-          onPress={handleLiveChatSupport}
+          icon="shield-outline"
+          title="Política de Privacidad"
+          description="Cómo protegemos tus datos"
+          onPress={handlePrivacyPolicy}
           colorScheme={colorScheme}
           delay={200}
         />
 
         <SupportOption
-          icon="help-circle-outline"
-          title="FAQ"
-          description="Find answers to common questions"
-          onPress={handleFAQ}
+          icon="document-text-outline"
+          title="Términos de Servicio"
+          description="Términos y condiciones de uso"
+          onPress={handleTermsOfService}
           colorScheme={colorScheme}
           delay={300}
         />
 
-        {/* Legal Section */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Legal & Privacy</Text>
+        {/* Feedback Section */}
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Comentarios</Text>
 
         <SupportOption
-          icon="shield-outline"
-          title="Privacy Policy"
-          description="How we protect your data"
-          onPress={handlePrivacyPolicy}
+          icon="bug-outline"
+          title="Reportar un Error"
+          description="Ayúdanos a mejorar la aplicación"
+          onPress={handleReportBug}
           colorScheme={colorScheme}
           delay={400}
         />
 
         <SupportOption
-          icon="document-text-outline"
-          title="Terms of Service"
-          description="Terms and conditions of use"
-          onPress={handleTermsOfService}
+          icon="bulb-outline"
+          title="Solicitar Funcionalidad"
+          description="Sugiere nuevas características"
+          onPress={handleFeatureRequest}
           colorScheme={colorScheme}
           delay={500}
         />
 
-        {/* Feedback Section */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Feedback</Text>
-
         <SupportOption
-          icon="bug-outline"
-          title="Report a Bug"
-          description="Help us improve the app"
-          onPress={handleReportBug}
+          icon="star-outline"
+          title="Calificar la App"
+          description="Comparte tu experiencia"
+          onPress={handleRateApp}
           colorScheme={colorScheme}
           delay={600}
         />
 
         <SupportOption
-          icon="bulb-outline"
-          title="Request a Feature"
-          description="Suggest new features"
-          onPress={handleFeatureRequest}
+          icon="share-outline"
+          title="Compartir WinAI"
+          description="Cuéntales a tus amigos sobre la app"
+          onPress={handleShareApp}
           colorScheme={colorScheme}
           delay={700}
         />
 
-        <SupportOption
-          icon="star-outline"
-          title="Rate the App"
-          description="Share your experience"
-          onPress={handleRateApp}
-          colorScheme={colorScheme}
-          delay={800}
-        />
-
-        <SupportOption
-          icon="share-outline"
-          title="Share WinAI"
-          description="Tell friends about the app"
-          onPress={handleShareApp}
-          colorScheme={colorScheme}
-          delay={900}
-        />
-
         {/* About Section */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>About</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Acerca de</Text>
 
         <SupportOption
           icon="information-circle-outline"
-          title="About WinAI"
-          description={`Version ${appVersion} (${buildNumber})`}
+          title="Acerca de WinAI"
+          description={`Versión ${appVersion} (${buildNumber})`}
           onPress={handleAboutApp}
           colorScheme={colorScheme}
-          delay={1000}
+          delay={800}
         />
 
         {/* Developer Info */}
         <View style={styles.developerInfo}>
           <Text style={[styles.developerText, { color: theme.textSecondary }]}>
-            Developed by WinAI Team
+            Desarrollado por el Equipo WinAI
           </Text>
           <Text style={[styles.developerText, { color: theme.textSecondary }]}>
-            © 2024 WinAI. All rights reserved.
+            © 2024 WinAI. Todos los derechos reservados.
           </Text>
           <Text style={[styles.developerText, { color: theme.textSecondary }]}>
-            Contact: support@winai.app
+            Contacto: support@winai.app
           </Text>
         </View>
       </ScrollView>

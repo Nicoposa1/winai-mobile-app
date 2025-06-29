@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { ReduxProvider } from '@/providers/ReduxProvider';
 import { Colors } from '../constants/Colors';
 import { supabase } from '../lib/supabase';
+import '../lib/i18n'; // Initialize i18n
 // import { GoogleAuthProvider } from '@/contexts/GoogleAuthContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -60,7 +61,7 @@ function RootLayoutNav() {
         // User is authenticated and profile is complete
         console.log('📍 Profile complete, checking if should navigate to tabs');
         // Only navigate to tabs if we're not already in the authenticated area
-        const inAuthenticatedArea = segments[0] === '(tabs)' || segments[0] === 'profile' || segments[0] === 'edit-profile' || segments[0] === 'security' || segments[0] === 'change-password' || segments[0] === 'help-support';
+        const inAuthenticatedArea = segments[0] === '(tabs)' || segments[0] === 'profile' || segments[0] === 'edit-profile' || segments[0] === 'security' || segments[0] === 'change-password' || segments[0] === 'help-support' || segments[0] === 'language';
         if (!inAuthenticatedArea) {
           console.log('📍 Not in authenticated area, navigating to tabs');
           router.replace('/(tabs)');
@@ -92,6 +93,7 @@ function RootLayoutNav() {
       <Stack.Screen name="security" options={{ headerShown: false }} />
       <Stack.Screen name="change-password" options={{ headerShown: false }} />
       <Stack.Screen name="help-support" options={{ headerShown: false }} />
+      <Stack.Screen name="language" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

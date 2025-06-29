@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { ColorSchemeName } from 'react-native';
+import { useI18n } from '@/hooks/useI18n';
 
 interface SavedWine {
   id: string;
@@ -30,6 +31,7 @@ export function SavedWineCard({
   onPress
 }: SavedWineCardProps) {
   const theme = colorScheme ?? 'light';
+  const { t } = useI18n();
 
   return (
     <TouchableOpacity 
@@ -56,9 +58,9 @@ export function SavedWineCard({
             </View>
             
             <View style={[styles.countdownContainer, { backgroundColor: accentColor }]}>
-              <Text style={styles.countdownTitle}>Listo para tomar en</Text>
+              <Text style={styles.countdownTitle}>{t('home.readyToTasteIn')}</Text>
               <Text style={styles.countdownValue}>
-                {wine.daysToOptimal} días
+                {wine.daysToOptimal} {t('home.days')}
               </Text>
             </View>
           </View>
@@ -67,7 +69,7 @@ export function SavedWineCard({
         <View style={styles.emptyWineCollection}>
           <MaterialIcons name="wine-bar" size={40} color={Colors[theme].tabIconDefault} />
           <Text style={[styles.emptyWineText, { color: Colors[theme].text }]}>
-            Añade tu primer vino
+            {t('home.addFirstWine')}
           </Text>
         </View>
       )}

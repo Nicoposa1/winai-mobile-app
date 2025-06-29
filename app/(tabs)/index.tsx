@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppSelector } from '@/store';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useI18n } from '@/hooks/useI18n';
 
 // Componentes
 import { Header } from '@/components/home/Header';
@@ -35,6 +36,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, profile } = useAuth();
   const { wines } = useAppSelector(state => state.wine);
+  const { t } = useI18n();
   
   // Colores según el tema
   const theme = BACKGROUND_COLORS[colorScheme ?? 'light'];
@@ -135,8 +137,8 @@ export default function HomeScreen() {
         
         {/* Sección de recomendaciones */}
         <RecommendationsSection
-          title="Recomendaciones para ti"
-          subtitle="Basadas en tus gustos anteriores"
+          title={t('home.recommendationsTitle')}
+          subtitle={t('home.recommendationsSubtitle')}
           recommendations={recommendations}
           colorScheme={colorScheme}
           themeColors={{
@@ -148,7 +150,7 @@ export default function HomeScreen() {
         
         {/* Sección de vino guardado con contador */}
         <WineCollectionSection
-          title="Tu colección"
+          title={t('home.collectionTitle')}
           subtitle=""
           wine={savedWine}
           wineCount={wines.length}
@@ -162,8 +164,8 @@ export default function HomeScreen() {
         
         {/* Sección de exploración con IA */}
         <AIExploreSection
-          title="Explorar con IA"
-          subtitle="Descubre nuevos vinos usando inteligencia artificial"
+          title={t('home.exploreTitle')}
+          subtitle={t('home.exploreSubtitle')}
           colorScheme={colorScheme}
           themeColors={{
             accent: theme.accent

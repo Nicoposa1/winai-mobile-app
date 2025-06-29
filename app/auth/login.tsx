@@ -25,6 +25,7 @@ import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../contexts/AuthContext';
 import { BiometricService } from '../../services/biometricService';
 import { Ionicons } from '@expo/vector-icons';
+import { useI18n } from '../../hooks/useI18n';
 
 const { width, height } = Dimensions.get('window');
 
@@ -39,6 +40,7 @@ export default function LoginScreen() {
   const [biometricType, setBiometricType] = useState<string>('');
   const router = useRouter();
   const { signInWithGoogle, session, profile } = useAuth();
+  const { t } = useI18n();
   const [formError, setFormError] = useState<{ email: string | null; password: string | null }>({
     email: null,
     password: null,
@@ -89,7 +91,7 @@ export default function LoginScreen() {
 
   const handleForgotPassword = async () => {
     if (!email) {
-      Alert.alert('Email Required', 'Please enter your email address in the field to reset your password.');
+      Alert.alert(t('auth.login.errors.emailRequired'), t('auth.login.errors.emailRequired'));
       return;
     }
 
@@ -108,13 +110,13 @@ export default function LoginScreen() {
     });
 
     if (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('common.error'), error.message);
     } else {
       Alert.alert(
-        'Password Reset Email Sent', 
+        t('auth.login.forgotPasswordEmailSent'), 
         isDevelopment 
-          ? 'Please check your email for a link to reset your password. The link will open in your web browser.'
-          : 'Please check your email for a link to reset your password.'
+          ? t('auth.login.forgotPasswordMessageDev')
+          : t('auth.login.forgotPasswordMessage')
       );
     }
     setIsLoading(false);
@@ -122,8 +124,8 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     let errors: { email: string | null; password: string | null } = { email: null, password: null };
-    if (!email) errors.email = 'Email is required.';
-    if (!password) errors.password = 'Password is required.';
+    if (!email) errors.email = t('auth.login.errors.emailRequired');
+    if (!password) errors.password = t('auth.login.errors.passwordRequired');
     setFormError(errors);
     if (errors.email || errors.password) return;
 
@@ -136,7 +138,7 @@ export default function LoginScreen() {
     console.log(data);
 
     if (error) {
-      Alert.alert('Login Failed', error.message);
+      Alert.alert(t('common.error'), error.message);
       console.log(error);
     } else {
       router.push('/');
@@ -155,11 +157,11 @@ export default function LoginScreen() {
         // No establecemos setIsGoogleLoading(false) aquí porque queremos mantener el loading
         // hasta que RootLayoutNav navegue a la página correcta
       } else {
-        Alert.alert('Google Sign-In Failed', result.error || 'An error occurred during Google sign-in');
+        Alert.alert(t('common.error'), result.error || t('auth.login.errors.unknownError'));
         setIsGoogleLoading(false);
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      Alert.alert(t('common.error'), t('auth.login.errors.unknownError'));
       setIsGoogleLoading(false);
     }
   };
@@ -182,9 +184,9 @@ export default function LoginScreen() {
           setEmail(userData.email);
           
           Alert.alert(
-            'Biometric Authentication Successful',
-            `Welcome back! Your email has been filled in. Please enter your password to complete the sign-in process.`,
-            [{ text: 'OK' }]
+            t('auth.login.biometricSuccess'),
+            t('auth.login.biometricSuccessMessage'),
+            [{ text: t('common.ok') }]
           );
           
           // Focus on password field would be nice here
@@ -192,16 +194,16 @@ export default function LoginScreen() {
           // such as storing an encrypted token that can be used for authentication
           
         } else {
-          Alert.alert('Error', 'No user data found for biometric login. Please set up biometric login in security settings.');
+          Alert.alert(t('common.error'), t('auth.login.biometricNoData'));
         }
       } else {
         if (result.error && !result.error.includes('canceled')) {
-          Alert.alert('Biometric Login Failed', result.error);
+          Alert.alert(t('common.error'), result.error);
         }
       }
     } catch (error: any) {
       console.error('Biometric login error:', error);
-      Alert.alert('Error', 'An error occurred during biometric authentication');
+      Alert.alert(t('common.error'), t('auth.login.biometricError'));
     } finally {
       setIsBiometricLoading(false);
     }
@@ -217,25 +219,30 @@ export default function LoginScreen() {
         colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.7)']}
         style={styles.overlay}
       >
-        <SafeAreaView style={styles.container}>
-          <StatusBar style="light" />
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.keyboardView}
-          >
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+        <StatusBar style="light" />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+          enabled={true}
+        >
+          <SafeAreaView style={styles.container}>
+            <ScrollView 
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.headerContainer}>
-                <Text style={styles.title}>Welcome Back</Text>
-                <Text style={styles.subtitle}>Sign in to continue</Text>
+                <Text style={styles.title}>{t('auth.login.title')}</Text>
+                <Text style={styles.subtitle}>{t('auth.login.subtitle')}</Text>
               </View>
 
               <View style={styles.whiteContainer}>
                 <View style={styles.formContainer}>
                   <FormInput
-                    label="Email"
+                    label={t('auth.login.email')}
                     value={email}
                     onChangeText={setEmail}
-                    placeholder="Enter your email"
+                    placeholder={t('auth.login.email')}
                     textContentType="emailAddress"
                     autoComplete="email"
                     autoCapitalize="none"
@@ -244,10 +251,10 @@ export default function LoginScreen() {
                   />
 
                   <FormInput
-                    label="Password"
+                    label={t('auth.login.password')}
                     value={password}
                     onChangeText={setPassword}
-                    placeholder="Enter your password"
+                    placeholder={t('auth.login.password')}
                     secureTextEntry
                     textContentType="password"
                     autoComplete="password"
@@ -259,11 +266,11 @@ export default function LoginScreen() {
                     onPress={handleForgotPassword}
                     style={styles.forgotPasswordContainer}
                   >
-                    <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                    <Text style={styles.forgotPasswordText}>{t('auth.login.forgotPassword')}</Text>
                   </TouchableOpacity>
 
                   <Button
-                    title="SIGN IN"
+                    title={t('auth.login.signInButton')}
                     onPress={handleLogin}
                     isLoading={isLoading}
                     color={Colors.dark.wineRed}
@@ -290,7 +297,7 @@ export default function LoginScreen() {
 
                   <View style={styles.dividerContainer}>
                     <View style={styles.divider} />
-                    <Text style={styles.dividerText}>OR</Text>
+                    <Text style={styles.dividerText}>{t('auth.login.or')}</Text>
                     <View style={styles.divider} />
                   </View>
 
@@ -302,7 +309,7 @@ export default function LoginScreen() {
                         source={require('../../assets/images/facebook.png')}
                         style={styles.socialIcon}
                       />
-                      <Text style={styles.socialText}>Facebook</Text>
+                      <Text style={styles.socialText}>{t('auth.login.signInWithFacebook')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -318,26 +325,26 @@ export default function LoginScreen() {
                             source={require('../../assets/images/google.png')}
                             style={styles.socialIcon}
                           />
-                          <Text style={styles.socialText}>Google</Text>
+                          <Text style={styles.socialText}>{t('auth.login.signInWithGoogle')}</Text>
                         </>
                       )}
                     </TouchableOpacity>
                   </View>
 
                   <View style={styles.footerContainer}>
-                    <Text style={styles.noAccountText}>Don't have an account? </Text>
+                    <Text style={styles.noAccountText}>{t('auth.login.noAccount')} </Text>
                     <TouchableOpacity onPress={() => {
                       console.log('Register button pressed');
                       router.push('/auth/register');
                     }}>
-                      <Text style={styles.registerText}>Register</Text>
+                      <Text style={styles.registerText}>{t('auth.login.signUp')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               </View>
             </ScrollView>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
       </LinearGradient>
     </ImageBackground>
   );
@@ -364,6 +371,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
     justifyContent: 'center',
+    minHeight: height * 0.9,
   },
   headerContainer: {
     marginBottom: 20,

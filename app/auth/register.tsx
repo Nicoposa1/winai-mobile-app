@@ -22,6 +22,7 @@ import { FormInput } from '../../components/FormInput';
 import { Button } from '../../components/Button';
 import { supabase } from '../../lib/supabase';
 import { Colors } from '../../constants/Colors';
+import { useI18n } from '../../hooks/useI18n';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,6 +31,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { t } = useI18n();
   const [formError, setFormError] = useState<{ email: string | null; password: string | null }>({
     email: null,
     password: null,
@@ -44,15 +46,15 @@ export default function RegisterScreen() {
     let errors: { email: string | null; password: string | null } = { email: null, password: null };
     
     if (!email) {
-      errors.email = 'Email is required.';
+      errors.email = t('auth.register.errors.emailRequired');
     } else if (!validateEmail(email)) {
-      errors.email = 'Please enter a valid email address.';
+      errors.email = t('auth.register.errors.emailInvalid');
     }
     
     if (!password) {
-      errors.password = 'Password is required.';
+      errors.password = t('auth.register.errors.passwordRequired');
     } else if (password.length < 6) {
-      errors.password = 'Password must be at least 6 characters.';
+      errors.password = t('auth.register.errors.passwordTooShort');
     }
     
     setFormError(errors);
@@ -93,41 +95,41 @@ export default function RegisterScreen() {
             (error as any).status === 422 ||
             (error as any).statusCode === 422) {
           Alert.alert(
-            'Account Already Exists', 
-            'An account with this email already exists. Please try logging in instead.',
+            t('auth.register.errors.emailInUse'), 
+            t('auth.register.errors.emailInUse'),
             [
-              { text: 'OK' },
+              { text: t('common.ok') },
               { text: 'Go to Login', onPress: () => router.push('/auth/login') }
             ]
           );
         } else if (errorMessage.includes('invalid email') || 
                    errorMessage.includes('email not valid')) {
-          Alert.alert('Invalid Email', 'Please enter a valid email address.');
+          Alert.alert(t('common.error'), t('auth.register.errors.emailInvalid'));
         } else if (errorMessage.includes('password') && 
                    (errorMessage.includes('weak') || errorMessage.includes('short'))) {
-          Alert.alert('Weak Password', 'Password must be at least 6 characters long and secure.');
+          Alert.alert(t('common.error'), t('auth.register.errors.weakPassword'));
         } else if (errorMessage.includes('rate limit') || 
                    errorMessage.includes('too many')) {
-          Alert.alert('Too Many Attempts', 'Please wait a moment before trying again.');
+          Alert.alert(t('common.error'), 'Please wait a moment before trying again.');
         } else {
-          Alert.alert('Registration Failed', error.message);
+          Alert.alert(t('common.error'), error.message);
         }
       } else if (data?.user) {
         // Registration successful
         console.log('✅ Registration successful for user:', data.user.email);
         Alert.alert(
-          'Registration Successful', 
+          t('common.success'), 
           'Please check your email to verify your account before logging in.',
-          [{ text: 'OK', onPress: () => router.push('/auth/login') }]
+          [{ text: t('common.ok'), onPress: () => router.push('/auth/login') }]
         );
       } else {
         // Unexpected response - no error but no user data
         console.log('Unexpected registration response - no error but no user data');
-        Alert.alert('Registration Issue', 'There was an issue processing your registration. Please try again.');
+        Alert.alert(t('common.error'), 'There was an issue processing your registration. Please try again.');
       }
     } catch (error: any) {
       console.error('Registration error:', error);
-      Alert.alert('Registration Failed', 'An unexpected error occurred. Please try again.');
+      Alert.alert(t('common.error'), t('auth.register.errors.unknownError'));
     }
     
     setIsLoading(false);
@@ -143,25 +145,30 @@ export default function RegisterScreen() {
         colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0.8)']}
         style={styles.overlay}
       >
-        <SafeAreaView style={styles.container}>
-          <StatusBar style="light" />
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.keyboardView}
-          >
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+        <StatusBar style="light" />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+          enabled={true}
+        >
+          <SafeAreaView style={styles.container}>
+            <ScrollView 
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.headerContainer}>
-                <Text style={styles.title}>Create Account</Text>
-                <Text style={styles.subtitle}>Start your wine journey today</Text>
+                <Text style={styles.title}>{t('auth.register.title')}</Text>
+                <Text style={styles.subtitle}>{t('auth.register.subtitle')}</Text>
               </View>
 
               <View style={styles.whiteContainer}>
                 <View style={styles.formContainer}>
                   <FormInput
-                    label="Email"
+                    label={t('auth.register.email')}
                     value={email}
                     onChangeText={setEmail}
-                    placeholder="Enter your email"
+                    placeholder={t('auth.register.email')}
                     textContentType="emailAddress"
                     autoComplete="email"
                     autoCapitalize="none"
@@ -170,10 +177,10 @@ export default function RegisterScreen() {
                   />
                   
                   <FormInput
-                    label="Password"
+                    label={t('auth.register.password')}
                     value={password}
                     onChangeText={setPassword}
-                    placeholder="Enter your password"
+                    placeholder={t('auth.register.password')}
                     secureTextEntry
                     textContentType="newPassword"
                     autoComplete="password"
@@ -182,25 +189,25 @@ export default function RegisterScreen() {
                   />
                   
                   <Button
-                    title="CREATE ACCOUNT"
+                    title={t('auth.register.createAccountButton')}
                     onPress={handleRegister}
                     isLoading={isLoading}
                     color={Colors.dark.wineRed}
                   />
 
                   <View style={styles.footerContainer}>
-                    <Text style={styles.noAccountText}>Already have an account? </Text>
+                    <Text style={styles.noAccountText}>{t('auth.register.haveAccount')} </Text>
                     <Link href="/auth/login" asChild>
                       <TouchableOpacity>
-                        <Text style={styles.registerText}>Sign In</Text>
+                        <Text style={styles.registerText}>{t('auth.register.signIn')}</Text>
                       </TouchableOpacity>
                     </Link>
                   </View>
                 </View>
               </View>
             </ScrollView>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
       </LinearGradient>
     </ImageBackground>
   );

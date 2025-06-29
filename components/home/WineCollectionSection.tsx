@@ -4,6 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '@/constants/Colors';
 import { ColorSchemeName } from 'react-native';
 import { SavedWineCard } from './SavedWineCard';
+import { useI18n } from '@/hooks/useI18n';
 
 interface SavedWine {
   id: string;
@@ -37,11 +38,12 @@ export function WineCollectionSection({
   onPress
 }: WineCollectionSectionProps) {
   const theme = colorScheme ?? 'light';
+  const { t } = useI18n();
   
   // Subtítulo personalizado basado en el número de vinos
   const displaySubtitle = wineCount > 0 
-    ? `${wineCount} vinos en tu bodega`
-    : 'Comienza a añadir vinos a tu bodega';
+    ? t('home.collectionSubtitle', { count: wineCount })
+    : t('home.collectionEmpty');
 
   return (
     <Animated.View 

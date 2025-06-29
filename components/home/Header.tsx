@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '@/constants/Colors';
 import { ColorSchemeName } from 'react-native';
+import { useI18n } from '@/hooks/useI18n';
 
 interface HeaderProps {
   userName: string;
@@ -11,6 +12,7 @@ interface HeaderProps {
 
 export function Header({ userName, colorScheme }: HeaderProps) {
   const theme = colorScheme ?? 'light';
+  const { t } = useI18n();
 
   return (
     <Animated.View 
@@ -19,10 +21,10 @@ export function Header({ userName, colorScheme }: HeaderProps) {
     >
       <View>
         <Text style={[styles.greetingSecondary, { color: Colors[theme].text }]}>
-          Bienvenido
+          {t('home.welcome')}
         </Text>
         <Text style={[styles.greetingPrimary, { color: Colors[theme].text }]}>
-          Hola {userName}
+          {t('home.hello', { name: userName })}
         </Text>
       </View>
     </Animated.View>

@@ -4,6 +4,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '@/constants/Colors';
 import { ColorSchemeName } from 'react-native';
+import { useI18n } from '@/hooks/useI18n';
 
 interface AIExploreSectionProps {
   title: string;
@@ -25,6 +26,7 @@ export function AIExploreSection({
   onAIDiscoverPress
 }: AIExploreSectionProps) {
   const theme = colorScheme ?? 'light';
+  const { t } = useI18n();
 
   return (
     <Animated.View 
@@ -45,7 +47,7 @@ export function AIExploreSection({
           onPress={onCameraPress}
         >
           <FontAwesome name="camera" size={24} color="#FFF" />
-          <Text style={styles.aiButtonText}>Explorar con foto</Text>
+          <Text style={styles.aiButtonText}>{t('home.explorePhoto')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -54,7 +56,7 @@ export function AIExploreSection({
           onPress={onAIDiscoverPress}
         >
           <FontAwesome name="magic" size={24} color="#FFF" />
-          <Text style={styles.aiButtonText}>Descubrir con IA</Text>
+          <Text style={styles.aiButtonText}>{t('home.discoverAI')}</Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
