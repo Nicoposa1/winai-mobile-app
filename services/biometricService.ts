@@ -1,5 +1,6 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 const BIOMETRIC_ENABLED_KEY = 'biometric_enabled';
 const BIOMETRIC_USER_KEY = 'biometric_user_credentials';
@@ -26,9 +27,16 @@ export class BiometricService {
       const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       
+      // Filter out PIN/Pattern/Password authentication types, only allow true biometrics
+      const biometricTypes = supportedTypes.filter(type => 
+        type === LocalAuthentication.AuthenticationType.FINGERPRINT ||
+        type === LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION ||
+        type === LocalAuthentication.AuthenticationType.IRIS
+      );
+      
       return {
-        isAvailable: hasHardware && isEnrolled && supportedTypes.length > 0,
-        supportedTypes,
+        isAvailable: hasHardware && isEnrolled && biometricTypes.length > 0,
+        supportedTypes: biometricTypes,
         hasHardware,
         isEnrolled,
       };
@@ -84,16 +92,29 @@ export class BiometricService {
       }
 
       // Prompt for biometric authentication to confirm setup
-      const authResult = await LocalAuthentication.authenticateAsync({
+      const authOptions: LocalAuthentication.LocalAuthenticationOptions = {
         promptMessage: 'Authenticate to enable biometric login',
         cancelLabel: 'Cancel',
-        disableDeviceFallback: false,
-      });
+        disableDeviceFallback: true,
+        fallbackLabel: '',
+        requireConfirmation: false,
+      };
+
+      // On iOS, we need to be more explicit about biometric-only authentication
+      if (Platform.OS === 'ios') {
+        authOptions.fallbackLabel = '';
+        authOptions.disableDeviceFallback = true;
+      }
+      
+      const authResult = await LocalAuthentication.authenticateAsync(authOptions);
 
       if (authResult.success) {
-        // Store biometric settings
+        // Store biometric settings with user credentials
         await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, 'true');
-        await SecureStore.setItemAsync(BIOMETRIC_USER_KEY, userEmail);
+        await SecureStore.setItemAsync(BIOMETRIC_USER_KEY, JSON.stringify({
+          email: userEmail,
+          enabledAt: new Date().toISOString(),
+        }));
         
         return {
           success: true,
@@ -138,16 +159,24 @@ export class BiometricService {
 
       const biometricType = this.getBiometricTypeName(capabilities.supportedTypes);
       
-      const authResult = await LocalAuthentication.authenticateAsync({
+      // Configure authentication options to force biometric-only authentication
+      const authOptions: LocalAuthentication.LocalAuthenticationOptions = {
         promptMessage: `Use ${biometricType} to sign in`,
-        cancelLabel: 'Use Password',
-        disableDeviceFallback: false,
-      });
+        cancelLabel: 'Cancel',
+        disableDeviceFallback: true,
+        fallbackLabel: '',
+        requireConfirmation: false,
+      };
+
+      // On iOS, we need to be more explicit about biometric-only authentication
+      if (Platform.OS === 'ios') {
+        authOptions.fallbackLabel = '';
+        authOptions.disableDeviceFallback = true;
+      }
+      
+      const authResult = await LocalAuthentication.authenticateAsync(authOptions);
 
       if (authResult.success) {
-        // Get stored user credentials
-        const userEmail = await SecureStore.getItemAsync(BIOMETRIC_USER_KEY);
-        
         return {
           success: true,
           biometricType,
@@ -170,9 +199,28 @@ export class BiometricService {
   // Get stored user email for biometric login
   static async getBiometricUserEmail(): Promise<string | null> {
     try {
-      return await SecureStore.getItemAsync(BIOMETRIC_USER_KEY);
+      const userData = await SecureStore.getItemAsync(BIOMETRIC_USER_KEY);
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        return parsed.email || null;
+      }
+      return null;
     } catch (error) {
       console.error('Error getting biometric user email:', error);
+      return null;
+    }
+  }
+
+  // Get stored user data for biometric login
+  static async getBiometricUserData(): Promise<{ email: string; enabledAt: string } | null> {
+    try {
+      const userData = await SecureStore.getItemAsync(BIOMETRIC_USER_KEY);
+      if (userData) {
+        return JSON.parse(userData);
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting biometric user data:', error);
       return null;
     }
   }

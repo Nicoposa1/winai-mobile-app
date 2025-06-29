@@ -14,7 +14,7 @@ import {
   Image,
   ActivityIndicator
 } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -23,6 +23,8 @@ import { Button } from '../../components/Button';
 import { supabase } from '../../lib/supabase';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../contexts/AuthContext';
+import { BiometricService } from '../../services/biometricService';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,6 +33,10 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isBiometricLoading, setIsBiometricLoading] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricType, setBiometricType] = useState<string>('');
   const router = useRouter();
   const { signInWithGoogle, session, profile } = useAuth();
   const [formError, setFormError] = useState<{ email: string | null; password: string | null }>({
@@ -38,12 +44,34 @@ export default function LoginScreen() {
     password: null,
   });
 
+  // Check biometric availability on component mount
+  React.useEffect(() => {
+    const checkBiometricAvailability = async () => {
+      try {
+        const isEnabled = await BiometricService.isBiometricEnabled();
+        if (isEnabled) {
+          const capabilities = await BiometricService.checkBiometricCapabilities();
+          if (capabilities.isAvailable) {
+            setBiometricEnabled(true);
+            setBiometricAvailable(true);
+            setBiometricType(BiometricService.getBiometricTypeName(capabilities.supportedTypes));
+          }
+        }
+      } catch (error) {
+        console.error('Error checking biometric availability:', error);
+      }
+    };
+
+    checkBiometricAvailability();
+  }, []);
+
   // Reset loading states only when session AND profile are ready (navigation completed)
   React.useEffect(() => {
     if (session && profile) {
       console.log('🔄 Session and profile ready, resetting loading states');
       setIsGoogleLoading(false);
       setIsLoading(false);
+      setIsBiometricLoading(false);
     }
   }, [session, profile]);
 
@@ -66,14 +94,28 @@ export default function LoginScreen() {
     }
 
     setIsLoading(true);
+    
+    // Determine the correct redirect URL based on the environment
+    const isDevelopment = __DEV__;
+    const redirectUrl = isDevelopment 
+      ? 'http://192.168.0.3:3000/reset-password'  // Backend web page for password reset (using local IP for mobile access)
+      : 'https://yourapp.com/reset-password';  // Production backend URL
+    
+    console.log('🔄 Sending password reset email with redirect:', redirectUrl);
+    
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'winai://auth/update-password',
+      redirectTo: redirectUrl,
     });
 
     if (error) {
       Alert.alert('Error', error.message);
     } else {
-      Alert.alert('Password Reset Email Sent', 'Please check your email for a link to reset your password.');
+      Alert.alert(
+        'Password Reset Email Sent', 
+        isDevelopment 
+          ? 'Please check your email for a link to reset your password. The link will open in your web browser.'
+          : 'Please check your email for a link to reset your password.'
+      );
     }
     setIsLoading(false);
   };
@@ -119,6 +161,49 @@ export default function LoginScreen() {
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred');
       setIsGoogleLoading(false);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    setIsBiometricLoading(true);
+    try {
+      const result = await BiometricService.authenticateWithBiometrics();
+      
+      if (result.success) {
+        // Get the stored user data
+        const userData = await BiometricService.getBiometricUserData();
+        
+        if (userData?.email) {
+          console.log('✅ Biometric authentication successful for:', userData.email);
+          
+          // For security, we'll show a success message and auto-fill the email
+          // The user still needs to enter their password for full authentication
+          // This is a security best practice - biometrics should be used as a convenience feature
+          setEmail(userData.email);
+          
+          Alert.alert(
+            'Biometric Authentication Successful',
+            `Welcome back! Your email has been filled in. Please enter your password to complete the sign-in process.`,
+            [{ text: 'OK' }]
+          );
+          
+          // Focus on password field would be nice here
+          // In a production app, you might want to implement a more sophisticated flow
+          // such as storing an encrypted token that can be used for authentication
+          
+        } else {
+          Alert.alert('Error', 'No user data found for biometric login. Please set up biometric login in security settings.');
+        }
+      } else {
+        if (result.error && !result.error.includes('canceled')) {
+          Alert.alert('Biometric Login Failed', result.error);
+        }
+      }
+    } catch (error: any) {
+      console.error('Biometric login error:', error);
+      Alert.alert('Error', 'An error occurred during biometric authentication');
+    } finally {
+      setIsBiometricLoading(false);
     }
   };
 
@@ -184,6 +269,25 @@ export default function LoginScreen() {
                     color={Colors.dark.wineRed}
                   />
 
+                  {/* Biometric Login Button */}
+                  {biometricEnabled && biometricAvailable && (
+                    <TouchableOpacity
+                      style={styles.biometricButton}
+                      onPress={handleBiometricLogin}
+                      disabled={isBiometricLoading || isLoading || isGoogleLoading}
+                    >
+                      {isBiometricLoading ? (
+                        <ActivityIndicator size="small" color={Colors.dark.wineRed} />
+                      ) : (
+                        <Ionicons 
+                          name={biometricType === 'Face ID' ? 'scan' : 'finger-print'} 
+                          size={20} 
+                          color={Colors.dark.wineRed} 
+                        />
+                      )}
+                    </TouchableOpacity>
+                  )}
+
                   <View style={styles.dividerContainer}>
                     <View style={styles.divider} />
                     <Text style={styles.dividerText}>OR</Text>
@@ -222,11 +326,12 @@ export default function LoginScreen() {
 
                   <View style={styles.footerContainer}>
                     <Text style={styles.noAccountText}>Don't have an account? </Text>
-                    <Link href="/auth/register" asChild>
-                      <TouchableOpacity>
-                        <Text style={styles.registerText}>Register</Text>
-                      </TouchableOpacity>
-                    </Link>
+                    <TouchableOpacity onPress={() => {
+                      console.log('Register button pressed');
+                      router.push('/auth/register');
+                    }}>
+                      <Text style={styles.registerText}>Register</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -359,5 +464,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Montserrat-SemiBold',
     color: Colors.dark.wineRed,
+  },
+  biometricButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
+    height: 40,
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 20,
+    backgroundColor: `${Colors.dark.wineRed}10`,
+    alignSelf: 'center',
   },
 }); 

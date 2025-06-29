@@ -38,10 +38,15 @@ function RootLayoutNav() {
 
     if (isLoading || isSigningOut) return; // Wait for auth to load or signing out to complete
 
-    // Priority 1: No session = go to login (this takes precedence)
+    // Priority 1: No session = go to auth area if not already there
     if (!session) {
-      console.log('📍 No session, navigating to login');
-      router.replace('/auth/login');
+      const inAuthArea = segments[0] === 'auth';
+      if (!inAuthArea) {
+        console.log('📍 No session, navigating to login');
+        router.replace('/auth/login');
+      } else {
+        console.log('📍 No session but already in auth area, staying');
+      }
       return;
     }
 
@@ -55,7 +60,7 @@ function RootLayoutNav() {
         // User is authenticated and profile is complete
         console.log('📍 Profile complete, checking if should navigate to tabs');
         // Only navigate to tabs if we're not already in the authenticated area
-        const inAuthenticatedArea = segments[0] === '(tabs)' || segments[0] === 'profile' || segments[0] === 'edit-profile' || segments[0] === 'security' || segments[0] === 'change-password';
+        const inAuthenticatedArea = segments[0] === '(tabs)' || segments[0] === 'profile' || segments[0] === 'edit-profile' || segments[0] === 'security' || segments[0] === 'change-password' || segments[0] === 'help-support';
         if (!inAuthenticatedArea) {
           console.log('📍 Not in authenticated area, navigating to tabs');
           router.replace('/(tabs)');
@@ -86,6 +91,7 @@ function RootLayoutNav() {
       <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
       <Stack.Screen name="security" options={{ headerShown: false }} />
       <Stack.Screen name="change-password" options={{ headerShown: false }} />
+      <Stack.Screen name="help-support" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );
